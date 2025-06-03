@@ -1,0 +1,88 @@
+﻿
+@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section Scripts{
+    @Scripts.Render("~/App_Assets/js/Department/Department.js")
+}
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                
+                    <div class="col col-sm-10">
+                        <h3 class="card-title">Department Master</h3>
+                    </div>
+                    <div class="col col-sm-2 offset-sm-10 text-sm-right">
+                        <button type="button" class="btn btn-blue btn-sm" data-toggle="modal" onclick="return clearfields()" data-target="#dept_modal">
+                            Add
+                        </button>
+                    </div>
+               
+             </div>
+                <div class="card-body">
+                    <table class="table table-sm table-bordered table-striped nowrap" style="width:100%" id="depttable">
+                        <thead>
+                            <tr>
+                                <th>Serial</th>
+                                <th>Id</th>
+                                <th data-priority="1">Department Name</th>
+                                <th>Description</th>
+                                <th>Active</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+
+                    </table>
+                </div>
+            </div>
+    </div>
+</div>
+
+<div class="modal fade" id="dept_modal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <h5 id="header" class="modal-title">Create Department</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <form>
+                    <!-- ID (Hidden) -->
+                    <input type="hidden" id="Id" name="departmentId" value="123">
+                    <!-- Department Name -->
+                    <div class="form-group">
+                        <label for="DeptName">Department Name</label>
+                        <input type="text" class="form-control validate" id="DeptName" name="departmentName">
+                    </div>
+
+                    <!-- Description (Multi Line Text Box) -->
+                    <div class="form-group">
+                        <label for="Desc">Description</label>
+                        <textarea class="form-control validate" id="Desc" name="description" rows="2"></textarea>
+                    </div>
+
+                    <!-- Active (Check Box) -->
+                    <div class="icheck-success d-inline">
+                        <input type="checkbox" id="active1" name="active">
+                        <label class="form-check-label" for="active1">Active</label>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <button class="btn btn-blue" id="btnAdd" onclick="return Add();"> <span>Add Department</span></button>
+                <button class="btn btn-primary d-none" id="btnUpdate" onclick="return Update();">
+                    <span>Update Department</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

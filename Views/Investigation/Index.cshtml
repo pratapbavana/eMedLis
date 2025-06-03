@@ -1,0 +1,135 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section Scripts{
+    @Scripts.Render("~/app_assets/js/InvMaster/InvMaster.js")
+}
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+
+                <div class="col col-sm-10">
+                    <h3 class="card-title">Investigation Master</h3>
+                </div>
+                <div class="col col-sm-2 offset-sm-10 text-sm-right">
+                    <button type="button" class="btn btn-blue btn-sm" data-toggle="modal" onclick="return clearfields()" data-target="#inv_modal">
+                        Add
+                    </button>
+                </div>
+
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-bordered table-striped nowrap" style="width:100%" id="invtable">
+                    <thead>
+                        <tr>
+                            <th>Serial</th>
+                            <th>Investigation Name</th>
+                            <th>Department</th>
+                            <th>Rate</th>
+                            <th>Active</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="inv_modal">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <h5 id="header" class="modal-title">Create Investigation</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <div class="container-fluid">
+                    <form>
+                        <div class="row">
+                            <!-- ID (Hidden) -->
+                            <input type="hidden" id="Id" name="subdepartmentId" value="123">
+
+                            <!--Inv Name -->
+                            <div class="form-group col-sm-12 col-md-6">
+                                <label for="InvName">Investigation Name</label>
+                                <input type="text" class="form-control validate" id="InvName" name="InvName">
+                            </div>
+
+                            <div class="form-group col-sm-12 col-md-3">
+                                <label for="Rate">Rate</label>
+                                <input type="number" class="form-control validate" id="Rate" name="Rate">
+                            </div>
+
+                            <div class="form-group col-sm-12 col-md-3">
+                                <label for="Code">Code</label>
+                                <input type="text" class="form-control validate" id="Code" name="Code">
+                            </div>
+
+                            <div class="form-group col-sm-12 col-md-6">
+                                <label for="RepHdr">Report Header</label>
+                                <input type="text" class="form-control validate" id="RepHdr" name="RepHdr">
+                            </div>
+
+                            <div class="form-group col-sm-12 col-md-6">
+                                <label for="RptTime">Report Time</label>
+                                <input type="text" class="form-control validate" id="RptTime" name="RptTime">
+                            </div>
+                            <!--Department Name -->
+                            <input type="hidden" id="DeptId">
+                            <div class="form-group col-sm-12 col-md-6">
+                                <label for="deptname">Department</label>
+                                <select type="text" class="form-control deptsearch validate" id="deptname" name="departmentName"> </select>
+                            </div>
+
+                            <input type="hidden" id="SubDeptId">
+                            <div class="form-group col-sm-12 col-md-6">
+                                <label for="subdeptname">Sub Department</label>
+                                <select type="text" class="form-control subdeptsearch validate" id="subdeptname" name="subdepartmentName"> </select>
+                            </div>
+
+                            <input type="hidden" id="SpecId">
+                            <div class="form-group col-sm-12 col-md-6">
+                                <label for="spec">Specimen</label>
+                                <select type="text" class="form-control specsearch validate" id="spec" name="specname"> </select>
+                            </div>
+
+                            <input type="hidden" id="VacId">
+                            <div class="form-group col-sm-12 col-md-6">
+                                <label for="vac">Vacutainer</label>
+                                <select type="text" class="form-control vacsearch validate" id="vac" name="vacname"> </select>
+                            </div>
+
+                            <div class="form-group col-sm-12 col-md-6">
+                                <label for="GLines">Guid Lines</label>
+                                <input type="text" class="form-control validate" id="GLines" name="GLines">
+                            </div>
+
+                            <!-- Active (Check Box) -->
+
+                            <div class="icheck-success active-checkbox d-inline">
+                                <input type="checkbox" id="active1" name="active">
+                                <label class="form-check-label" for="active1">Active</label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <button class="btn btn-blue" id="btnAdd" onclick="return Add();"> <span>Add Investigation</span></button>
+                <button class="btn btn-primary d-none" id="btnUpdate" onclick="return Update();">
+                    <span>Update Investigation</span>
+                </button>
+            </div>
+        </div>
+    </div>   
+</div>

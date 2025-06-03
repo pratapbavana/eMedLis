@@ -1,0 +1,38 @@
+﻿.badge-outline-danger {
+    color: #f1536e;
+    border: 1px solid #f1536e
+}
+
+.badge-outline-success {
+    color: #4caf50;
+    border: 1px solid #4caf50;
+    background: 0 0;
+}
+
+.btn-blue {
+    color: #fff !important;
+    background-color: #311b92 !important;
+    border-color: #311b92 !important;
+    box-shadow: none !important;
+}
+
+.active-checkbox {
+    margin-top: 40px !important;
+    margin-left: 10px;
+}
+
+.col-form-label-sm {
+    padding-top: calc(.25rem + 1px);
+    padding-bottom: 0rem !important;
+    font-size: .875rem;
+    line-height: 1.5;
+    margin-bottom: 0rem !important
+}
+
+.card-header {
+    padding: 0.15rem 1.25rem !important;
+}
+
+.card-title {
+    margin: 3px !important;
+}

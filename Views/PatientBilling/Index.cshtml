@@ -1,0 +1,230 @@
+﻿
+@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+@section Scripts{
+    @Scripts.Render("~/app_assets/js/PatientBilling/PatientBilling.js")
+}
+@*<div class="font-size-small">*@
+<div class="content" id="PatList">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1>Investigation Master</h1>
+                </div>
+                <div class="col-sm-6">
+                    <div class="breadcrumb float-sm-right">
+                        <button type="button" class="btn btn-blue btn-sm" onclick="return clearfields()" data-target="#Billing">
+                            Add
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <section class="content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card">
+                        @*<div class="card-header">
+
+                                <div class="col col-sm-10">
+                                    <h3 class="card-title">Investigation Master</h3>
+                                </div>
+                                <div class="col col-sm-2 offset-sm-10 text-sm-right">
+                                    <button type="button" class="btn btn-blue btn-sm" onclick="return clearfields()" data-target="#Billing">
+                                        Add
+                                    </button>
+                                </div>
+
+                            </div>*@
+                        <div class="card-body">
+                            <table class="table table-sm table-bordered table-striped nowrap" style="width:100%" id="billstable">
+                                <thead>
+                                    <tr>
+                                        <th>Serial</th>
+                                        <th>Bill No</th>
+                                        <th>Bill Date</th>
+                                        <th>Patient Name</th>
+                                        <th>Mobile No</th>
+                                        <th>Amount</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+<section class="content">
+    <div class="container-fluid">
+        <div class="row collapse" id="Billing">
+            <section class="content-header">
+                <div class="container-fluid">
+                    <div class="row mb-2">
+                        <div class="col-sm-6">
+                            <h1>Patint Billing</h1>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="breadcrumb float-sm-right">
+                                <button type="button" class="btn btn-danger btn-sm" onclick="return ToggleForm();">
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <div class="col-sm-12">
+                <form>
+                    <div class="card">
+                        <div class="card-header bg-gray-light">
+                            <h5 class="card-title font-weight-bold">Patint Details</h5>
+                        </div>
+                        <div class="card-body p-1">
+
+                            <div class="row">
+                                <!-- ID (Hidden) -->
+                                <input type="hidden" id="Id" value="123">
+
+                                <div class=" col-sm-12 col-md-3 col-lg-3">
+                                    <label class="col-form-label-sm" for="MobileNo">Mobile No</label>
+                                    <input id="MobileNo" type="number" class="form-control form-control-sm validate">
+                                </div>
+
+                                <div class=" col-sm-12 col-md-3 col-lg-3">
+                                    <label class="col-form-label-sm" for="PatName">Patient Name</label>
+                                    <input id="PatName" type="text" class="form-control form-control-sm validate" />
+                                </div>
+
+                                <div class=" col-sm-12 col-md-3 col-lg-3">
+                                    <label class="col-form-label-sm" for="Age">Age</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control form-control-sm validate" id="Age">
+                                        <div class="input-group-append">
+                                            <select class="form-control form-control-sm" id="AgeType">
+                                                <option value="" disabled selected>Type</option>
+                                                <option value="1">Year(s)</option>
+                                                <option value="2">Month(s)</option>
+                                                <option value="3">Day(s)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="p col-sm-12 col-md-3 col-lg-3">
+                                    <label class="col-form-label-sm">Gender</label>
+                                    <select class="form-control form-control-sm" id="Gender">
+                                        <option value="" disabled selected>Gender</option>
+                                        <option value="1">Male</option>
+                                        <option value="2">Female</option>
+                                        <option value="3">Others</option>
+                                    </select>
+                                </div>
+
+                                <div class=" col-sm-12 col-md-3 col-lg-3">
+                                    <label class="col-form-label-sm" for="Ref">Reffered By</label>
+                                    <input type="text" id="Ref" class="form-control form-control-sm validate">
+                                </div>
+
+                                <div class=" col-sm-12 col-md-3 col-lg-3">
+                                    <label class="col-form-label-sm" for="Area">Area</label>
+                                    <input id="Area" type="text" class="form-control form-control-sm validate">
+                                </div>
+
+                                <label id="CityId" class="d-none"></label>
+                                <div class=" col-sm-12 col-md-3 col-lg-3">
+                                    <label class="col-form-label-sm" for="City">City</label>
+                                    <input type="text" id="City" class="form-control form-control-sm validate">
+                                </div>
+
+                                <div class=" col-sm-12 col-md-3 col-lg-3">
+                                    <label class="col-form-label-sm" for="Email">Email</label>
+                                    <input id="Email" type="email" class="form-control form-control-sm validate">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-12 col-md-12 col-lg-8">
+                            <div class="card">
+                                <div class="card-body p-1">
+                                    <div class="form-group mb-0">
+                                        @*<label class="col-form-label-sm" for="Inv">Investigation</label>*@
+                                        <select type="text" id="Inv" class="invsearch form-control form-control-sm"> </select>
+                                    </div>
+                                    <div class="table-responsive form-group mb-0">
+                                        <table class="table table-sm table-bordered table-striped nowrap" style="width:100%" id="invtable">
+                                            <thead>
+                                                <tr>
+                                                    <th>Inv Code</th>
+                                                    <th>Investigation Name</th>
+                                                    <th>Rate</th>
+                                                    <th>Discount(Rs / %)</th>
+                                                    <th class="right-align">Net Amount</th>
+                                                    <th>Action</th>
+                                                </tr>
+                                            </thead>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-12 col-md-6 col-lg-4">
+                            <div class="card">
+                                <div class="card-header bg-gray-light">
+                                    <h5 class="card-title font-weight-bold">Payment Details</h5>
+                                </div>
+                                <div class="row card-body p-1">
+                                    <div class="col-6">
+                                        <label class="col-form-label-sm">Payment Mode</label>
+                                        <select class="form-control form-control-sm" id="paymentMode">
+                                            <option value="" disabled selected>Mode</option>
+                                            <option value="1">Cash</option>
+                                            <option value="2">UPI</option>
+                                            <option value="3">Card</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="col-form-label-sm" for="pamount">Amount</label>
+                                        <input type="text" id="pamount" class="form-control form-control-sm ">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="col-form-label-sm" for="refno">Reference No</label>
+                                        <input type="text" id="refno" class="form-control form-control-sm ">
+                                    </div>
+                                    <div class="col-6 form-group">
+                                        <button class="btn btn-primary btn-sm" id="btnAddPay"><span>+ Add Payment</span></button>
+                                    </div>
+                                    <div class="table-responsive mb-0">
+                                        <table class="table table-sm table-bordered table-striped nowrap" style="width:100%" id="paymentGrid">
+                                            <thead>
+                                                <tr>
+                                                    <th>Payment Mode</th>
+                                                    <th>Amount</th>
+                                                    <th>Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Card Footer -->
+                    <div class="card-footer">
+                        <button class="btn btn-blue float-right" id="btnAdd" onclick="return SaveBill();"> <span>Save Bill</span></button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+    </div>
+</section>
