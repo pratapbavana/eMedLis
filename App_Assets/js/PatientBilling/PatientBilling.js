@@ -1,8 +1,6 @@
-﻿
-$(document).ready(function () {
-   
+﻿$(document).ready(function () {
     var i = $("#invtable").DataTable(
-        {  
+        {
             "paging": false,
             "searching": false,
             "sorting": false,
@@ -10,8 +8,6 @@ $(document).ready(function () {
             "scrollY": '30vh',
         }
     )
-  
-
     var j = $("#paymentGrid").DataTable(
         {
             "paging": false,
@@ -25,18 +21,28 @@ $(document).ready(function () {
             .row($(this).parents('tr'))
             .remove()
             .draw();
-        var ratearray = i.columns(4).data()[0]
-        var subtotal = ratearray.reduce(function (pv, cv) { return pv + cv; }, 0);
-        $('#subtotal').text(subtotal);
+        // Recalculate and update labels after row deletion
+        calculateAndSetSummaryAmounts();
     });
     $('#paymentGrid tbody').on('click', '.btnDelete', function () {
-        i
+        j
             .row($(this).parents('tr'))
             .remove()
             .draw();
-        var ratearray = i.columns(4).data()[0]
-        var subtotal = ratearray.reduce(function (pv, cv) { return pv + cv; }, 0);
-        $('#subtotal').text(subtotal);
+        // !!! IMPORTANT: Recalculate Paid and Due Amounts after deleting payment !!!
+        updatePaymentSummary();
+    });
+    $('form').on('keydown', function (event) {
+        if (event.keyCode === 13) {
+            event.preventDefault();
+            return false;
+        }
+    });
+    $('#pamount').on('keydown', function (event) {
+        if (event.keyCode === 13) { // 13 is the keycode for the Enter key
+            event.preventDefault(); // Prevent the default action (e.g., form submission)
+            $('#btnAddPay').click(); // Trigger the click event on the Add Payment button
+        }
     });
 })
 
@@ -116,6 +122,12 @@ function clearfields() {
     $('#Inv').removeClass("valid is-invalid");
     $('#Inv').val(null).trigger("change");
     $("#invtable").DataTable().columns.adjust().draw();
+    // Reset summary amounts on clear
+    $('#lblTotalBill').text('0.00');
+    $('#lblNetAmount').text('0.00');
+    $('#lblDiscountAmount').text('0.00');
+    $('#lblPaidAmount').text('0.00');
+    $('#lblDueAmount').text('0.00');
 }
 // #endregion
 
@@ -190,46 +202,45 @@ function addinvtolist(Id) {
     if (!Id) {
         return;
     }
-        $.ajax({
-            url: "/Investigation/getbyID/" + Id,
-            type: "GET",
-            contentType: "application/json;charset=UTF-8",
-            dataType: "json",
-            success: function (result) {
-                var i = $("#invtable").DataTable()
-                var idx = i
-                    .columns(0)
-                    .data()
-                    .eq(0) // Reduce the 2D array into a 1D array of data
-                    .indexOf(result[0].InvCode);
+    $.ajax({
+        url: "/Investigation/getbyID/" + Id,
+        type: "GET",
+        contentType: "application/json;charset=UTF-8",
+        dataType: "json",
+        success: function (result) {
+            var i = $("#invtable").DataTable()
+            var idx = i
+                .columns(0)
+                .data()
+                .eq(0) // Reduce the 2D array into a 1D array of data
+                .indexOf(result[0].InvCode);
 
-                if (idx === -1) {
-                    var i = $("#invtable").DataTable()
-                    var rowNode = i.row.add([
-                        result[0].InvCode,
-                        '<div class="text-wrap">' + result[0].InvName + '</div>',
-                        result[0].Rate,
-                        '<div style="display: flex;"> <input class="form-control form-control-sm" type="number" id="DiscountAmount" style="flex: 1;" name="DiscountAmount" placeholder="Rs 0.00" style="width:50%;" > <input class="form-control form-control-sm" type="number" id="DiscountPercent" style="flex: 1;" name="DiscountPercent" placeholder="0%" style="width:50%;"> </div>',
-                        result[0].Rate,
-                        '<a href="#"><i class="fa fa-trash fa-sm delete" style="color: #ad0000;"></i></a>'
-                    ]).draw()
-                        .node();
-                    $(rowNode).find('td').eq(4).addClass('indigo-text right-align');
-                    var ratearray = i.columns(4).data()[0]
-                    var subtotal = ratearray.reduce(function (pv, cv) { return pv + cv; }, 0);
-                    //$('#subtotal').text(subtotal);
-                    //console.log(sum);
-                    //$('#invtable').DataTable().columns.adjust();
-                    $('#Inv').val(null).trigger("change");
-                }
-                else {
-                    toastr.error('Test already added!');
-                    $('#Inv').val(null).trigger("change");
-                }
-            },
-            error: function (errormessage) {
-                alert(errormessage.responseText);
+            if (idx === -1) {
+                var i = $("#invtable").DataTable()
+                var rowNode = i.row.add([
+                    result[0].InvCode,
+                    '<div class="text-wrap">' + result[0].InvName + '</div>',
+                    result[0].Rate.toFixed(2), // Ensure rate is formatted as number
+                    '<div style="display: flex;"> <input class="form-control form-control-sm" type="number" id="DiscountAmount" style="flex: 1;" name="DiscountAmount" placeholder="Rs 0.00"> <input class="form-control form-control-sm" type="number" id="DiscountPercent" style="flex: 1;" name="DiscountPercent" placeholder="0%"> </div>',
+                    result[0].Rate.toFixed(2), // Net Amount initially same as Rate
+                    '<a href="#"><i class="fa fa-trash fa-sm delete" style="color: #ad0000;"></i></a>'
+                ]).draw()
+                    .node();
+                $(rowNode).find('td').eq(4).addClass('indigo-text right-align'); // No change here, this is for visual alignment
+
+                // Recalculate and update labels after adding a new row
+                calculateAndSetSummaryAmounts();
+
+                $('#Inv').val(null).trigger("change");
             }
+            else {
+                toastr.error('Test already added!');
+                $('#Inv').val(null).trigger("change");
+            }
+        },
+        error: function (errormessage) {
+            alert(errormessage.responseText);
+        }
     });
 }
 //#endregion
@@ -319,57 +330,38 @@ function validate() {
 
 // #region Investigation Dropdown
 $(document).ready(function () {
-        $.ajax({
-            url: '/Investigation/List',
-            type: 'GET',
-            dataType: 'json',
-            success: function (data) {
-                const formattedData = data.map(item => ({
-                    id: item.Id,
-                    text: item.InvName,
-                }));
-                $(".invsearch").select2({
-                    data: formattedData,
-                    width: "100%",
-                    placeholder: 'Select Investigation'
-                });
-                $('.invsearch').on('change', function () {
-                    const SelectedId = $(this).val();
-                    addinvtolist(SelectedId);
-                });
-            },
-            error: function (jqXHR, textStatus, errorThrown) {
-                console.error('Error fetching data:', textStatus, errorThrown);
-            },
-        });
+    $.ajax({
+        url: '/Investigation/List',
+        type: 'GET',
+        dataType: 'json',
+        success: function (data) {
+            const formattedData = data.map(item => ({
+                id: item.Id,
+                text: item.InvName,
+            }));
+            $(".invsearch").select2({
+                data: formattedData,
+                width: "100%",
+                placeholder: 'Select Investigation'
+            });
+            $('.invsearch').on('change', function () {
+                const SelectedId = $(this).val();
+                addinvtolist(SelectedId);
+            });
+        },
+        error: function (jqXHR, textStatus, errorThrown) {
+            console.error('Error fetching data:', textStatus, errorThrown);
+        },
+    });
 });
 // #endregion
-//$(document).ready(function () {
-//    $("#invtable").on("keyup", "input[name='DiscountAmount']", function () {
-//        var row = $(this).closest("tr");
-//        var rate = parseFloat(row.find("td:nth-child(3)").text()); // Get Rate from 3rd column
-//        var discount = parseFloat($(this).val()) || 0;
-
-//        // Validate Discount (should not be more than Rate)
-//        if (discount > rate) {
-//            $(this).val(rate); // Set Discount to Rate if exceeds
-//            discount = rate;
-//        }
-//        else if (discount < 0) {
-//            $(this).val('');
-//            discount = 0;
-//        }
-//        var netValue = rate - discount;
-//        row.find("td:nth-child(5)").text(netValue.toFixed(2)); // Update Net Value text
-//    });
-//});
 
 $(document).ready(function () {
     var isUpdatingPercent = false;
     var isUpdatingAmount = false;
 
     $("#invtable").on("keyup", "input[name='DiscountPercent'], input[name='DiscountAmount']", function () {
-        const input2 = $(this).is("input[name = 'DiscountPercent']");
+        const input2 = $(this).is("input[name = 'DiscountPercent']"); // This variable is not used
         var row = $(this).closest("tr");
         var discountAmountInput = row.find("input[name='DiscountAmount']");
         var discountPercentInput = row.find("input[name='DiscountPercent']");
@@ -384,6 +376,11 @@ $(document).ready(function () {
         if ($(this).is("input[name='DiscountPercent']")) {
             isUpdatingPercent = true;
             if (discountPercent > 0) {
+                // Ensure discount percent does not exceed 100
+                if (discountPercent > 100) {
+                    discountPercent = 100;
+                    $(this).val(100);
+                }
                 discountAmountInput.prop("disabled", true);
                 discountAmount = rate * (discountPercent / 100);
             } else {
@@ -394,6 +391,11 @@ $(document).ready(function () {
         } else {
             isUpdatingAmount = true;
             if (discountAmount > 0) {
+                // Ensure discount amount does not exceed rate
+                if (discountAmount > rate) {
+                    discountAmount = rate;
+                    $(this).val(rate);
+                }
                 discountPercentInput.prop("disabled", true);
                 discountPercent = (discountAmount / rate) * 100;
             } else {
@@ -405,49 +407,134 @@ $(document).ready(function () {
 
         // Update the other field only if the change wasn't triggered by itself
         if (!isUpdatingPercent) {
-            row.find("input[name='DiscountPercent']").val(discountPercent.toFixed(2));
+            discountPercentInput.val(discountPercent.toFixed(2));
         }
         if (!isUpdatingAmount) {
-            row.find("input[name='DiscountAmount']").val(discountAmount.toFixed(2));
-        }
-
-        // Validate Discount (should not be more than Rate) - Consider both percentage and amount
-        var totalDiscount = Math.max(discountAmount, rate * (discountPercent / 100));
-        if (totalDiscount > rate) {
-            // Set both Discount (%) and Discount (Rs) to enforce maximum discount
-            row.find("input[name='DiscountPercent']").val((100).toFixed(2));
-            row.find("input[name='DiscountAmount']").val(rate.toFixed(2));
-            discountAmount=rate
+            discountAmountInput.val(discountAmount.toFixed(2));
         }
 
         var netValue = rate - discountAmount;
-        row.find("td:nth-child(5)").text(netValue.toFixed(2)); // Update Net Value text
+        row.find("td:nth-child(5)").text(netValue.toFixed(2)); // Update Net Value text in table
+
+        // !!! IMPORTANT: Call the function to recalculate and update summary amounts !!!
+        calculateAndSetSummaryAmounts();
     });
 });
+
+// New function to encapsulate calculation of summary amounts
+// New function to encapsulate calculation of summary amounts
+function calculateAndSetSummaryAmounts() {
+    var i = $("#invtable").DataTable();
+    var totalBill = 0;
+    var totalNetAmount = 0;
+    var totalDiscountAmount = 0;
+
+    // Iterate over each row in the DataTable
+    i.rows().every(function () {
+        var rowNode = this.node(); // Get the DOM node for the current row
+        var rate = parseFloat($(rowNode).find("td:nth-child(3)").text()); // Rate from 3rd column
+        // Get Net Amount directly from the visible table cell (5th column)
+        var netAmount = parseFloat($(rowNode).find("td:nth-child(5)").text());
+
+        if (isNaN(rate)) rate = 0; // Handle potential NaN
+        if (isNaN(netAmount)) netAmount = 0; // Handle potential NaN
+
+        totalBill += rate;
+        totalNetAmount += netAmount;
+        totalDiscountAmount += (rate - netAmount); // Discount is Rate - Net Amount
+    });
+
+    $('#lblTotalBill').text(totalBill.toFixed(2));
+    $('#lblNetAmount').text(totalNetAmount.toFixed(2));
+    $('#lblDiscountAmount').text(totalDiscountAmount.toFixed(2));
+
+    // After updating NetAmount, recalculate Due Amount as well
+    updatePaymentSummary(); // // Call this to update paid/due based on new net total
+}
 
 // #region Pay Mode to List
 $(document).ready(function () {
     $("#btnAddPay").click(function (event) {
         event.preventDefault();
-        var paymentMode = $("#paymentMode").val();
-        var amount = $("#pamount").val();
-        if (!isNaN(paymentMode) &&!isNaN(amount) && amount > 0) { // Basic validation for positive amount
+        var paymentModeValue = $("#paymentMode").val();
+        var paymentModeText = $("#paymentMode option:selected").text();
+        var amount = parseFloat($("#pamount").val()) || 0; // Parse as float
+        var refno = $("#refno").val();
+
+        var currentDueAmount = parseFloat($('#lblDueAmount').text()) || 0; // Get the current due amount
+
+        if (paymentModeValue && !isNaN(amount) && amount > 0) { // Basic validation for positive amount
+            // NEW VALIDATION: Prevent payment from exceeding due amount
+            if (amount > currentDueAmount) {
+                toastr.info('Payment amount cannot be more than the due amount!');
+                return; // Stop the function if amount exceeds due
+            }
+
             // Add a new row to the grid
             var j = $("#paymentGrid").DataTable()
             var rowNode = j.row.add([
-                paymentMode,
-                amount,
+                paymentModeText,
+                amount.toFixed(2), // Format amount for display
+                refno,
                 '<a href="#"><i class="fa fa-trash fa-sm btnDelete" style="color: #ad0000;"></i></a>'
             ]).draw()
                 .node();
             // Clear the input fields
             $("#pamount").val("");
-            //$(".btnDelete").click(function () {
-            //    $(this).parent().parent().parent().remove(); // Remove the entire row
-            //});
+            $("#paymentMode").val("");
+            $("#refno").val("");
+
+            // !!! IMPORTANT: Recalculate Paid and Due Amounts after adding payment !!!
+            updatePaymentSummary();
+
         } else {
-            alert("Please enter a valid amount.");
+            toastr.info("Please enter a valid amount and select a payment mode.");
         }
     });
 });
 //#endregion
+
+// New function to encapsulate calculation of payment summary amounts
+function updatePaymentSummary() {
+    var j = $("#paymentGrid").DataTable();
+    var totalPaidAmount = 0;
+
+    // Iterate over each row in the paymentGrid DataTable
+    j.rows().every(function () {
+        var data = this.data();
+        totalPaidAmount += parseFloat(data[1]); // Amount is in the 2nd column (index 1)
+    });
+
+    var netAmount = parseFloat($('#lblNetAmount').text()) || 0;
+    var dueAmount = netAmount - totalPaidAmount;
+
+    // NEW LOGIC: If due amount becomes negative, clear the payment grid
+    if (dueAmount < 0) {
+        toastr.info("Due amount cannot be negative. Payment details have been reset.");
+        j.clear().draw(); // Clear all rows from the payment grid
+        totalPaidAmount = 0; // Reset total paid amount since grid is cleared
+        dueAmount = netAmount; // Due amount becomes net amount again
+    }
+
+    $('#lblPaidAmount').text(totalPaidAmount.toFixed(2));
+    $('#lblDueAmount').text(dueAmount.toFixed(2));
+
+    // Also clear payment input fields if the grid was reset
+    if (dueAmount < 0) { // This condition will be true if the grid was just cleared
+        $("#pamount").val("");
+        $("#paymentMode").val("");
+        $("#refno").val("");
+    }
+}
+
+
+$(document).ready(function () {
+    $('#paymentMode').on('change', function () {
+        var mode = $(this).val();
+        if (mode === "1") { // Cash
+            $('#refno').prop('disabled', true).val('');
+        } else {
+            $('#refno').prop('disabled', false);
+        }
+    });
+});

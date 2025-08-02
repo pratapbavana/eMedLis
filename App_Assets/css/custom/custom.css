@@ -30,9 +30,116 @@
 }
 
 .card-header {
-    padding: 0.15rem 1.25rem !important;
+    padding: 0.15rem 0.25rem !important;
+}
+.card-header2 {
+    padding: 0.5rem 0.25rem !important;
 }
 
 .card-title {
     margin: 3px !important;
 }
+
+.card-primary.card-outline {
+    border-top: 3px solid #311b92 !important;
+}
+
+.content-wrapper {
+    padding: 20px;
+}
+/* DataTables custom styling for compact look and header */
+.dataTable thead th {
+    background-color: #3f6791 !important;
+    color: #ffffff !important;
+    /*padding: 0.5rem 0.75rem !important;*/
+    border-bottom: 1px solid #c9e2ff !important;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.dataTable tbody tr:hover {
+    background-color: #e0f2fe;
+    cursor: pointer;
+}
+
+.dataTable td {
+    font-size: 0.875rem;
+}
+
+.page-item.active .page-link {
+    background-color: #3c8dbc !important;
+    border-color: #3c8dbc !important;
+}
+body {
+    background: #f7f9fb;
+}
+
+.card {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(60,72,88,0.06);
+    border: 1px solid #e3e6ec;
+}
+.summary-row {
+    background: #f1f5fa !important;
+    border-radius: 0 0 8px 8px;
+    border-top: 1px solid #e3e6ec;
+    font-size: 1rem;
+}
+.table thead th {
+    background: #eaf1fb;
+    color: #2d3a4a;
+    font-weight: 600;
+    border-bottom: 2px solid #d1dbe5;
+}
+
+.btn-primary, .btn-blue {
+    background: #4f8cff;
+    border-color: #4f8cff;
+}
+.btn-primary:hover, .btn-blue:hover {
+    background: #2563eb;
+    border-color: #2563eb;
+ }
+section.pt-2.pb-1 {
+    background: #f7f9fb;
+    border-bottom: 1px solid #e0e0e0;
+    margin-bottom: 0.5rem;
+}
+.summary-container {
+    display: flex; /* Use flexbox for the entire row of columns */
+    justify-content: space-around; /* Distribute columns evenly */
+    padding: 15px 0; /* Add some padding to the overall summary area */
+    border: 1px solid #ddd; /* Add a light border around the whole summary area */
+}
+
+.summary-column-wrapper {
+    /* Styles for the wrapper of each set of labels/amounts */
+    flex: 1; /* Allow columns to take equal width */
+    padding: 0 15px; /* Add horizontal padding within each column */
+    border-right: 1px solid #cbc8c8; /* Light vertical separator line */
+}
+
+    .summary-column-wrapper:last-child {
+        border-right: none; /* No separator on the last column */
+    }
+
+.summary-item {
+    display: flex;
+    justify-content: space-between; /* To push amount to the right */
+    align-items: baseline;
+    margin-bottom: 5px; /* Slight vertical spacing between items */
+    gap: 10px; /* This is key for decreasing space between label and amount */
+}
+
+    .summary-item .summary-label {
+        /* text-align: left; - Not strictly needed with justify-content: space-between */
+        white-space: nowrap; /* Prevent label from wrapping */
+        /* Remove flex-basis here if you want gap to handle spacing more fluidly */
+    }
+
+    .summary-item .summary-amount {
+        /* flex-grow: 1; - Not strictly needed with justify-content: space-between and gap */
+        text-align: right;
+        font-weight: bold;
+    }
