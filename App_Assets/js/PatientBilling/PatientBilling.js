@@ -6,6 +6,9 @@
             "sorting": false,
             "bInfo": false,
             "scrollY": '30vh',
+            "columnDefs": [
+                { "visible": false, "targets": [0] } // NEW: Hide the first column (where InvId will be)
+            ]
         }
     )
     var j = $("#paymentGrid").DataTable(
@@ -53,44 +56,111 @@ function ToggleForm() {
 
 // #region Save Bill
 function SaveBill() {
-    var res = validate();
-    if (res == false) {
+    // --- Client-side validation ---
+    if (!$("#PatName").val() || !$("#MobileNo").val()) {
+        alert("Patient Name and Mobile Number are mandatory.");
         return false;
     }
-    var empObj = {
-        InvName: $('#InvName').val(),
-        Rate: $('#Rate').val(),
-        InvCode: $('#Code').val(),
-        ReportHdr: $('#RepHdr').val(),
-        SubDeptId: $('#SubDeptId').text(),
-        SpecimenId: $('#SpecId').text(),
-        VacutainerId: $('#VacId').text(),
-        ReportTime: $('#RptTime').val(),
-        GuideLines: $('#GLines').val(),
-        Active: $('#active1').prop('checked')
-    };
-    $.ajax({
-        url: "/Investigation/Add",
-        data: JSON.stringify(empObj),
-        type: "POST",
-        contentType: "application/json;charset=utf-8",
-        dataType: "json",
-        success: function (result) {
-            if (result.Item1 == 1) {
-                M.toast({ html: result.Item2, classes: 'green rounded' });
-                $('#modal_aside_left').modal('hide');
-                //$("#alertbox").fadeIn();
-                //closeSnoAlertBox();
-                $('#depttable').DataTable().ajax.reload();
-            }
-            else
-                M.toast({ html: result.Item2, classes: 'red rounded' });
+    if ($("#invtable").DataTable().rows().count() === 0) {
+        alert("Please add at least one investigation.");
+        return false;
+    }
+    if (parseFloat($('#lblDueAmount').text()) > 0 && !$('#Remarks').val()) {
+        alert("Remarks are mandatory as due amount is greater than 0.");
+        $('#Remarks').focus(); // Focus on the Remarks field
+        return false;
+    }
 
+    // --- 1. Collect Patient Details ---
+    var patientDetails = {
+        MobileNo: $("#MobileNo").val(),
+        PatName: $("#PatName").val(),
+        Age: parseInt($("#Age").val()) || 0,
+        AgeType: $("#AgeType").val(),
+        Gender: $("#Gender").val(),
+        Ref: $("#Ref").val(),
+        Area: $("#Area").val(),
+        City: $("#City").val(),
+        Email: $("#Email").val()
+    };
+
+    // --- 2. Collect Bill Summary Details ---
+    var billSummary = {
+        TotalBill: parseFloat($('#lblTotalBill').text()) || 0,
+        TotalDiscountAmount: parseFloat($('#lblDiscountAmount').text()) || 0,
+        NetAmount: parseFloat($('#lblNetAmount').text()) || 0,
+        PaidAmount: parseFloat($('#lblPaidAmount').text()) || 0,
+        DueAmount: parseFloat($('#lblDueAmount').text()) || 0,
+        Remarks: $('#Remarks').val()
+    };
+
+    // --- 3. Collect Bill Details (Investigations from invtable) ---
+    var billDetails = [];
+    var invTable = $("#invtable").DataTable();
+    invTable.rows().every(function () {
+        var data = this.data();
+        var rowNode = this.node();
+        billDetails.push({
+            // IMPORTANT: Adjust these indices based on the actual order of columns
+            // in your 'invtable' DataTable when rows are added.
+            // My assumption is: [InvCode (hidden), InvName, Rate, DiscountPercent, DiscountAmount, NetAmount, Action]
+            InvId: data[0], // Assuming InvCode is the first (possibly hidden) column
+            InvName: $(rowNode).find("td:nth-child(2)").text(), // Assuming InvName is the second column
+            Rate: parseFloat($(rowNode).find("td:nth-child(3)").text()) || 0,
+            DiscountPercent: parseFloat($(rowNode).find("td:nth-child(4) input[name='DiscountPercent']").val()) || 0,
+            DiscountAmount: parseFloat($(rowNode).find("td:nth-child(4) input[name='DiscountAmount']").val()) || 0,
+            NetAmount: parseFloat($(rowNode).find("td:nth-child(5)").text()) || 0
+        });
+    });
+
+    // --- 4. Collect Payment Details (from paymentGrid) ---
+    var paymentDetails = [];
+    var paymentTable = $("#paymentGrid").DataTable();
+    paymentTable.rows().every(function () {
+        var data = this.data();
+        paymentDetails.push({
+            // IMPORTANT: Adjust these indices based on the actual order of columns
+            // in your 'paymentGrid' DataTable when rows are added.
+            // My assumption is: [PaymentMode, Amount, Ref.No, Action]
+            PaymentMode: data[0],
+            Amount: parseFloat(data[1]),
+            RefNo: data[2]
+        });
+    });
+
+    // --- Bundle all collected data into the ViewModel structure ---
+    var patientBillData = {
+        PatientDetails: patientDetails,
+        SummaryDetails: billSummary,
+        BillDetails: billDetails,
+        PaymentDetails: paymentDetails
+    };
+
+    // --- AJAX Call to save the bill ---
+    $.ajax({
+        url: '/PatientBilling/SaveBill', // Matches your PatientBillingController and SaveBill action
+        type: 'POST',
+        dataType: 'json',
+        contentType: 'application/json; charset=utf-8',
+        data: JSON.stringify(patientBillData), // Convert JavaScript object to JSON string
+        success: function (response) {
+            if (response.success === true) { // Assuming result.Item1 is status (1 for success)
+                toastr.success(response.message + ' with Bill No: ' + response.billId); 
+                clearfields(); // Clear the form on successful save
+                $("#invtable").DataTable().clear().draw();
+                $("#paymentGrid").DataTable().clear().draw();
+                // You can add logic here to redirect, print the bill, etc.
+            } else {
+                toastr.error(response.message);
+            }
         },
         error: function (errormessage) {
-            M.toast({ html: 'Something Wrong!', classes: 'red rounded' });
+            toastr.error('Something Wrong! ' + errormessage.responseText);
+            console.error("Error saving bill:", errormessage);
         }
     });
+
+    return false; // Prevent default form submission (important for buttons inside a form)
 }
 // #endregion
 
@@ -216,8 +286,10 @@ function addinvtolist(Id) {
                 .indexOf(result[0].InvCode);
 
             if (idx === -1) {
+                var SelectedInvId = Id
                 var i = $("#invtable").DataTable()
                 var rowNode = i.row.add([
+                    SelectedInvId,
                     result[0].InvCode,
                     '<div class="text-wrap">' + result[0].InvName + '</div>',
                     result[0].Rate.toFixed(2), // Ensure rate is formatted as number

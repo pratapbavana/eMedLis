@@ -189,6 +189,7 @@
     <Compile Include="Controllers\ManageController.cs" />
     <Compile Include="Controllers\PatientBillingController.cs" />
     <Compile Include="Controllers\SubDepartmentController.cs" />
+    <Compile Include="DAL\PatientBilling\PatientBillingDB.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
@@ -201,6 +202,11 @@
     <Compile Include="Models\Lookup.cs" />
     <Compile Include="Models\LookupDB.cs" />
     <Compile Include="Models\ManageViewModels.cs" />
+    <Compile Include="Models\PatientBilling\BillDetail.cs" />
+    <Compile Include="Models\PatientBilling\BillSummary.cs" />
+    <Compile Include="Models\PatientBilling\PatientBillViewModel.cs" />
+    <Compile Include="Models\PatientBilling\PatientInfo.cs" />
+    <Compile Include="Models\PatientBilling\PaymentDetail.cs" />
     <Compile Include="Models\SubDepartment.cs" />
     <Compile Include="Models\SubDepartmentDB.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
