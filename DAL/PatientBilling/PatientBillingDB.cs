@@ -49,6 +49,8 @@ namespace eMedLis.DAL.PatientBilling
         private int SaveBillSummary(BillSummary summary, int patientInfoId, SqlConnection connection, SqlTransaction transaction)
         {
             int billSummaryId = 0;
+            string generatedBillNo = "";
+
             using (SqlCommand cmd = new SqlCommand("usp_InsertBillSummary", connection, transaction))
             {
                 cmd.CommandType = CommandType.StoredProcedure;
@@ -58,7 +60,7 @@ namespace eMedLis.DAL.PatientBilling
                 cmd.Parameters.AddWithValue("@NetAmount", summary.NetAmount);
                 cmd.Parameters.AddWithValue("@PaidAmount", summary.PaidAmount);
                 cmd.Parameters.AddWithValue("@DueAmount", summary.DueAmount);
-                cmd.Parameters.AddWithValue("@Remarks", summary.Remarks ?? (object)DBNull.Value); // Handle nullable
+                cmd.Parameters.AddWithValue("@Remarks", summary.Remarks ?? (object)DBNull.Value);
 
                 SqlParameter outputIdParam = new SqlParameter("@BillSummaryId", SqlDbType.Int)
                 {
@@ -66,9 +68,22 @@ namespace eMedLis.DAL.PatientBilling
                 };
                 cmd.Parameters.Add(outputIdParam);
 
-                cmd.ExecuteNonQuery();
+                // Execute and get multiple result sets
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    // First result set contains the generated BillNo
+                    if (reader.Read())
+                    {
+                        generatedBillNo = reader["GeneratedBillNo"].ToString();
+                    }
+                }
+
                 billSummaryId = (int)outputIdParam.Value;
+
+                // Store the generated BillNo in the summary object for later use
+                summary.BillNo = generatedBillNo;
             }
+
             return billSummaryId;
         }
 
@@ -104,9 +119,10 @@ namespace eMedLis.DAL.PatientBilling
         // --- Main Orchestration Method ---
 
         // In DAL/PatientBilling/PatientBillingDB.cs
-        public int SaveCompleteBill(PatientBillViewModel billData)
+        public BillSaveResult SaveCompleteBill(PatientBillViewModel billData)
         {
             int billSummaryId = 0;
+            string billNo = "";
 
             using (var connection = new SqlConnection(_connectionString))
             {
@@ -127,9 +143,10 @@ namespace eMedLis.DAL.PatientBilling
                         patientInfoId = SavePatientInfo(billData.PatientDetails, connection, transaction);
                     }
 
-                    // 2. Save Bill Summary
+                    // 2. Save Bill Summary (this will generate BillNo)
                     billData.SummaryDetails.PatientInfoId = patientInfoId;
                     billSummaryId = SaveBillSummary(billData.SummaryDetails, patientInfoId, connection, transaction);
+                    billNo = billData.SummaryDetails.BillNo; // Get the generated BillNo
 
                     // 3. Save Bill Details
                     foreach (var detail in billData.BillDetails)
@@ -152,7 +169,12 @@ namespace eMedLis.DAL.PatientBilling
                 }
             }
 
-            return billSummaryId;
+            return new BillSaveResult
+            {
+                BillSummaryId = billSummaryId,
+                BillNo = billNo,
+                Success = true
+            };
         }
 
         public CompleteBillData GetCompleteBillForPrint(int billSummaryId)
@@ -178,13 +200,15 @@ namespace eMedLis.DAL.PatientBilling
                                 result.BillSummary = new BillSummary
                                 {
                                     BillSummaryId = (int)reader["BillSummaryId"],
+                                    BillNo = reader["BillNo"]?.ToString(),
                                     PatientInfoId = (int)reader["PatientInfoId"],
                                     TotalBill = Convert.ToDecimal(reader["TotalBill"]),
                                     TotalDiscountAmount = Convert.ToDecimal(reader["TotalDiscountAmount"]),
                                     NetAmount = Convert.ToDecimal(reader["NetAmount"]),
                                     PaidAmount = Convert.ToDecimal(reader["PaidAmount"]),
                                     DueAmount = Convert.ToDecimal(reader["DueAmount"]),
-                                    Remarks = reader["Remarks"]?.ToString()
+                                    Remarks = reader["Remarks"]?.ToString(),
+                                    BillDate = Convert.ToDateTime(reader["BillDate"])
                                 };
                             }
                         }
@@ -205,6 +229,7 @@ namespace eMedLis.DAL.PatientBilling
                                     result.PatientInfo = new PatientInfo
                                     {
                                         PatientInfoId = (int)reader["PatientInfoId"],
+                                        UHID = reader["UHID"]?.ToString(),
                                         MobileNo = reader["MobileNo"].ToString(),
                                         PatName = reader["PatName"].ToString(),
                                         Age = Convert.ToInt32(reader["Age"]),
@@ -276,14 +301,19 @@ namespace eMedLis.DAL.PatientBilling
         }
         public List<PatientInfo> SearchPatientsByMobile(string mobileNo)
         {
+            return SearchPatientsUniversal(mobileNo);
+        }
+
+        public List<PatientInfo> SearchPatientsUniversal(string searchValue)
+        {
             var patients = new List<PatientInfo>();
 
             using (SqlConnection connection = new SqlConnection(_connectionString))
             {
-                using (SqlCommand cmd = new SqlCommand("usp_SearchPatientsByMobile", connection))
+                using (SqlCommand cmd = new SqlCommand("usp_SearchPatientsUniversal", connection))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
-                    cmd.Parameters.AddWithValue("@MobileNo", mobileNo);
+                    cmd.Parameters.AddWithValue("@SearchValue", searchValue);
 
                     connection.Open();
                     using (SqlDataReader reader = cmd.ExecuteReader())
@@ -311,6 +341,29 @@ namespace eMedLis.DAL.PatientBilling
             }
 
             return patients;
+        }
+
+        public CompleteBillData GetBillByBillNo(string billNo)
+        {
+            using (SqlConnection connection = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("usp_GetBillByBillNo", connection))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@BillNo", billNo);
+
+                    connection.Open();
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            int billSummaryId = (int)reader["BillSummaryId"];
+                            return GetCompleteBillForPrint(billSummaryId);
+                        }
+                    }
+                }
+            }
+            return null;
         }
     }
 }

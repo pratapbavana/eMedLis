@@ -143,3 +143,24 @@ section.pt-2.pb-1 {
         text-align: right;
         font-weight: bold;
     }
+.form-control.is-mobile {
+    border-left: 4px solid #28a745;
+}
+
+.form-control.is-uhid {
+    border-left: 4px solid #007bff;
+}
+
+.form-control.is-invalid {
+    border-left: 4px solid #dc3545;
+}
+
+#btnSearchPatient {
+    min-width: 120px;
+}
+
+.patient-search-hint {
+    font-size: 11px;
+    color: #6c757d;
+    margin-top: 2px;
+}

@@ -27,21 +27,25 @@ namespace eMedLis.Controllers
                 }
 
                 PatientBillingDB db = new PatientBillingDB();
-                int billSummaryId = db.SaveCompleteBill(billData); // This method handles the transaction
+                BillSaveResult result = db.SaveCompleteBill(billData);
 
-                if (billSummaryId > 0)
+                if (result.Success && result.BillSummaryId > 0)
                 {
-                    return Json(new { success = true, message = "Bill saved successfully!", billId = billSummaryId });
+                    return Json(new
+                    {
+                        success = true,
+                        message = "Bill saved successfully!",
+                        billId = result.BillSummaryId,
+                        billNo = result.BillNo
+                    });
                 }
                 else
                 {
-                    return Json(new { success = false, message = "Failed to save bill. No Bill ID returned." });
+                    return Json(new { success = false, message = "Failed to save bill." });
                 }
             }
             catch (Exception ex)
             {
-                // Log the exception details (e.g., using log4net, NLog, or a simple file logger)
-                // In a real application, avoid sending detailed exception messages to the client.
                 return Json(new { success = false, message = "An error occurred while saving the bill: " + ex.Message });
             }
         }
@@ -57,144 +61,170 @@ namespace eMedLis.Controllers
 
                 if (billData == null)
                 {
-                    return Json(new { success = false, message = "Bill not found." }, JsonRequestBehavior.AllowGet);
+                    return Content("<h1>Bill not found</h1>", "text/html");
                 }
 
-                // Generate HTML content
-                string htmlContent = GenerateBillHTML(billData, billId);
+                // Generate HTML content for direct print
+                string htmlContent = GenerateBillHTML(billData, billId, forModal: false);
 
                 return Content(htmlContent, "text/html");
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = "Error generating bill: " + ex.Message }, JsonRequestBehavior.AllowGet);
+                return Content($"<h1>Error: {ex.Message}</h1>", "text/html");
             }
         }
 
-        private string GenerateBillHTML(CompleteBillData billData, int billId)
+        // Update GenerateBillHTML to support different output formats
+        private string GenerateBillHTML(CompleteBillData billData, int billId, bool forModal = false, bool forPDF = false)
         {
             var html = new StringBuilder();
+            string displayBillNo = billData.BillSummary.BillNo ?? billId.ToString();
 
-            html.Append(@"
+            // Different styling based on output format
+            string bodyOnLoad = "";
+            string additionalStyles = "";
+
+            if (!forModal && !forPDF)
+            {
+                bodyOnLoad = "onload='window.print();'";
+            }
+
+            if (forModal)
+            {
+                additionalStyles = @"
+        .bill-container { 
+            width: 100%; 
+            max-width: 400px; 
+            margin: 0 auto; 
+        }
+        body { 
+            margin: 10px; 
+            background: #fff; 
+        }";
+            }
+
+            html.Append($@"
 <!DOCTYPE html>
 <html lang='en'>
 <head>
     <meta charset='UTF-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <title>Bill - " + billId + @"</title>
+    <title>Bill - {displayBillNo}</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ 
             font-family: Arial, sans-serif; 
             font-size: 12px; 
             line-height: 1.4;
             color: #000;
             background: #fff;
-        }
-        .bill-container { 
+        }}
+        .bill-container {{ 
             width: 80mm; 
             margin: 0 auto; 
             padding: 10px;
-        }
-        .header { 
+        }}
+        .header {{ 
             text-align: center; 
             border-bottom: 2px solid #000; 
             padding-bottom: 10px; 
             margin-bottom: 15px;
-        }
-        .header h1 { 
+        }}
+        .header h1 {{ 
             font-size: 16px; 
             font-weight: bold; 
             margin-bottom: 5px;
-        }
-        .header p { 
+        }}
+        .header p {{ 
             font-size: 10px; 
             margin: 2px 0;
-        }
-        .bill-info { 
+        }}
+        .bill-info {{ 
             display: flex; 
             justify-content: space-between; 
             margin-bottom: 15px;
-        }
-        .bill-info div { 
+        }}
+        .bill-info div {{ 
             font-size: 11px;
-        }
-        .patient-section { 
+        }}
+        .patient-section {{ 
             margin-bottom: 15px;
-        }
-        .patient-row { 
+        }}
+        .patient-row {{ 
             display: flex; 
             justify-content: space-between; 
             margin-bottom: 3px;
-        }
-        .investigations-table { 
+        }}
+        .investigations-table {{ 
             width: 100%; 
             border-collapse: collapse; 
             margin-bottom: 15px;
-        }
-        .investigations-table th, .investigations-table td { 
+        }}
+        .investigations-table th, .investigations-table td {{ 
             border: 1px solid #000; 
             padding: 4px; 
             text-align: left; 
             font-size: 10px;
-        }
-        .investigations-table th { 
+        }}
+        .investigations-table th {{ 
             background-color: #f0f0f0; 
             font-weight: bold;
-        }
-        .investigations-table td.number { 
+        }}
+        .investigations-table td.number {{ 
             text-align: right;
-        }
-        .totals-section { 
+        }}
+        .totals-section {{ 
             margin-bottom: 15px;
-        }
-        .total-row { 
+        }}
+        .total-row {{ 
             display: flex; 
             justify-content: space-between; 
             margin-bottom: 2px; 
             padding: 2px 0;
-        }
-        .total-row.final { 
+        }}
+        .total-row.final {{ 
             font-weight: bold; 
             border-top: 1px solid #000; 
             padding-top: 5px;
-        }
-        .payment-section { 
+        }}
+        .payment-section {{ 
             margin-bottom: 15px;
-        }
-        .payment-table { 
+        }}
+        .payment-table {{ 
             width: 100%; 
             border-collapse: collapse;
-        }
-        .payment-table th, .payment-table td { 
+        }}
+        .payment-table th, .payment-table td {{ 
             border: 1px solid #000; 
             padding: 4px; 
             text-align: left; 
             font-size: 10px;
-        }
-        .payment-table th { 
+        }}
+        .payment-table th {{ 
             background-color: #f0f0f0;
-        }
-        .footer { 
+        }}
+        .footer {{ 
             text-align: center; 
             margin-top: 20px; 
             border-top: 1px solid #000; 
             padding-top: 10px;
-        }
-        .barcode { 
+        }}
+        .barcode {{ 
             text-align: center; 
             font-family: 'Courier New', monospace; 
             font-size: 14px; 
             margin: 10px 0;
-        }
-        @media print {
-            body { margin: 0; }
-            .bill-container { width: 100%; }
-            .no-print { display: none; }
-        }
+        }}
+        {additionalStyles}
+        @media print {{
+            body {{ margin: 0; }}
+            .bill-container {{ width: 100%; }}
+            .no-print {{ display: none; }}
+        }}
     </style>
 </head>
-<body onload='window.print();'>
+<body {bodyOnLoad}>
     <div class='bill-container'>
         <!-- Header -->
         <div class='header'>
@@ -206,31 +236,31 @@ namespace eMedLis.Controllers
 
         <!-- Bill Info and Barcode -->
         <div class='bill-info'>
-            <div><strong>Bill/Reg. no:</strong> " + billId + @"</div>
-            <div><strong>Date:</strong> " + DateTime.Now.ToString("dd/MM/yyyy HH:mm") + @"</div>
+            <div><strong>Bill No:</strong> {displayBillNo}</div>
+            <div><strong>Date:</strong> {billData.BillSummary.BillDate:dd/MM/yyyy HH:mm}</div>
         </div>
         
         <div class='barcode'>
-            ||||| |||| | || ||||
-            " + billId + @"
+            ||||| |||| | || ||||<br>
+            {displayBillNo}
         </div>
 
         <!-- Patient Information -->
         <div class='patient-section'>
             <div class='patient-row'>
-    <span><strong>Name:</strong> " + billData.PatientInfo.PatName + @"</span>
-    <span><strong>UHID:</strong> " + (billData.PatientInfo.UHID ?? "NEW") + @"</span>
-</div>
-            <div class='patient-row'>
-                <span><strong>Age/Sex:</strong> " + billData.PatientInfo.Age + " " + billData.PatientInfo.AgeType + "/" + billData.PatientInfo.Gender + @"</span>
-                <span><strong>Referred by:</strong> " + (billData.PatientInfo.Ref ?? "Self") + @"</span>
+                <span><strong>Name:</strong> {billData.PatientInfo.PatName}</span>
+                <span><strong>UHID:</strong> {billData.PatientInfo.UHID ?? "NEW"}</span>
             </div>
             <div class='patient-row'>
-                <span><strong>Mobile:</strong> " + billData.PatientInfo.MobileNo + @"</span>
+                <span><strong>Age/Sex:</strong> {billData.PatientInfo.Age} {billData.PatientInfo.AgeType}/{billData.PatientInfo.Gender}</span>
+                <span><strong>Referred by:</strong> {billData.PatientInfo.Ref ?? "Self"}</span>
+            </div>
+            <div class='patient-row'>
+                <span><strong>Mobile:</strong> {billData.PatientInfo.MobileNo}</span>
                 <span><strong>Received by:</strong> Admin</span>
             </div>
             <div class='patient-row'>
-                <span><strong>Address:</strong> " + (billData.PatientInfo.Area ?? "") + ", " + (billData.PatientInfo.City ?? "") + @"</span>
+                <span><strong>Address:</strong> {billData.PatientInfo.Area ?? ""}, {billData.PatientInfo.City ?? ""}</span>
             </div>
         </div>
 
@@ -257,7 +287,7 @@ namespace eMedLis.Controllers
                 </tr>");
             }
 
-            html.Append(@"
+            html.Append($@"
             </tbody>
         </table>
 
@@ -265,23 +295,23 @@ namespace eMedLis.Controllers
         <div class='totals-section'>
             <div class='total-row'>
                 <span>Bill Amount:</span>
-                <span>Rs. " + billData.BillSummary.TotalBill.ToString("F2") + @"</span>
+                <span>Rs. {billData.BillSummary.TotalBill:F2}</span>
             </div>
             <div class='total-row'>
                 <span>Discount Amount:</span>
-                <span>Rs. " + billData.BillSummary.TotalDiscountAmount.ToString("F2") + @"</span>
+                <span>Rs. {billData.BillSummary.TotalDiscountAmount:F2}</span>
             </div>
             <div class='total-row final'>
                 <span>Final Bill Amount:</span>
-                <span>Rs. " + billData.BillSummary.NetAmount.ToString("F2") + @"</span>
+                <span>Rs. {billData.BillSummary.NetAmount:F2}</span>
             </div>
             <div class='total-row'>
                 <span>Paid Amount:</span>
-                <span>Rs. " + billData.BillSummary.PaidAmount.ToString("F2") + @"</span>
+                <span>Rs. {billData.BillSummary.PaidAmount:F2}</span>
             </div>
             <div class='total-row'>
                 <span>Due Amount:</span>
-                <span>Rs. " + billData.BillSummary.DueAmount.ToString("F2") + @"</span>
+                <span>Rs. {billData.BillSummary.DueAmount:F2}</span>
             </div>
         </div>
 
@@ -307,18 +337,18 @@ namespace eMedLis.Controllers
                 html.Append($@"
                 <tr>
                     <td>{i + 1}</td>
-                    <td>RCPT {billId + i}</td>
-                    <td>{DateTime.Now:dd/MM/yyyy}</td>
+                    <td>RCPT {displayBillNo}{i:00}</td>
+                    <td>{billData.BillSummary.BillDate:dd/MM/yyyy}</td>
                     <td class='number'>{payment.Amount:F2}</td>
                     <td>{payment.PaymentMode}</td>
                 </tr>");
             }
 
-            html.Append(@"
+            html.Append($@"
                 </tbody>
             </table>
             <div style='text-align: center; margin-top: 10px;'>
-                <strong>Total: Rs. " + billData.BillSummary.PaidAmount.ToString("F2") + @"</strong>
+                <strong>Total: Rs. {billData.BillSummary.PaidAmount:F2}</strong>
             </div>
         </div>
 
@@ -337,22 +367,40 @@ namespace eMedLis.Controllers
             return html.ToString();
         }
 
+
         [HttpPost]
-        public JsonResult SearchPatients(string mobileNo)
+        public JsonResult SearchPatients(string searchValue)
         {
             try
             {
-                if (string.IsNullOrEmpty(mobileNo) || mobileNo.Length < 10)
+                if (string.IsNullOrEmpty(searchValue))
                 {
-                    return Json(new { success = false, message = "Please enter a valid 10-digit mobile number." });
+                    return Json(new { success = false, message = "Please enter mobile number or UHID." });
+                }
+
+                // Determine search type and validate
+                bool isMobileSearch = IsValidMobileNumber(searchValue);
+                bool isUHIDSearch = IsValidUHID(searchValue);
+
+                if (!isMobileSearch && !isUHIDSearch)
+                {
+                    return Json(new
+                    {
+                        success = false,
+                        message = "Please enter a valid 10-digit mobile number or UHID (e.g., EMED2025001)."
+                    });
                 }
 
                 PatientBillingDB db = new PatientBillingDB();
-                var patients = db.SearchPatientsByMobile(mobileNo);
+                var patients = db.SearchPatientsUniversal(searchValue);
+
+                string searchType = isMobileSearch ? "mobile number" : "UHID";
 
                 return Json(new
                 {
                     success = true,
+                    searchType = searchType,
+                    searchValue = searchValue,
                     patients = patients.Select(p => new {
                         patientInfoId = p.PatientInfoId,
                         uhid = p.UHID,
@@ -372,6 +420,120 @@ namespace eMedLis.Controllers
             catch (Exception ex)
             {
                 return Json(new { success = false, message = "Error searching patients: " + ex.Message });
+            }
+        }
+
+        private bool IsValidMobileNumber(string input)
+        {
+            return !string.IsNullOrEmpty(input) &&
+                   input.Length == 10 &&
+                   input.All(char.IsDigit);
+        }
+
+        private bool IsValidUHID(string input)
+        {
+            return !string.IsNullOrEmpty(input) &&
+                   (input.ToUpper().StartsWith("EMED") ||
+                    (input.Length >= 4 && input.All(char.IsLetterOrDigit)));
+        }
+
+        [HttpGet]
+        public ActionResult GetBillByNo(string billNo)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(billNo))
+                {
+                    return Json(new { success = false, message = "Bill number is required." }, JsonRequestBehavior.AllowGet);
+                }
+
+                PatientBillingDB db = new PatientBillingDB();
+                var billData = db.GetBillByBillNo(billNo);
+
+                if (billData != null)
+                {
+                    return Json(new
+                    {
+                        success = true,
+                        billData = new
+                        {
+                            billSummaryId = billData.BillSummary.BillSummaryId,
+                            billNo = billData.BillSummary.BillNo,
+                            patientName = billData.PatientInfo.PatName,
+                            totalAmount = billData.BillSummary.NetAmount,
+                            BillDate = billData.BillSummary.BillDate.ToString("dd/MM/yyyy")
+                        }
+                    }, JsonRequestBehavior.AllowGet);
+                }
+                else
+                {
+                    return Json(new { success = false, message = "Bill not found." }, JsonRequestBehavior.AllowGet);
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "Error retrieving bill: " + ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        [HttpGet]
+        public ActionResult PrintBillModal(int billId)
+        {
+            try
+            {
+                PatientBillingDB db = new PatientBillingDB();
+                var billData = db.GetCompleteBillForPrint(billId);
+
+                if (billData == null)
+                {
+                    return Json(new { success = false, message = "Bill not found." }, JsonRequestBehavior.AllowGet);
+                }
+
+                // Generate HTML content for modal
+                string htmlContent = GenerateBillHTML(billData, billId, forModal: true);
+
+                return Json(new
+                {
+                    success = true,
+                    htmlContent = htmlContent,
+                    billNo = billData.BillSummary.BillNo,
+                    patientName = billData.PatientInfo.PatName
+                }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "Error generating bill: " + ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        [HttpGet]
+        public ActionResult ExportBillPDF(int billId)
+        {
+            try
+            {
+                PatientBillingDB db = new PatientBillingDB();
+                var billData = db.GetCompleteBillForPrint(billId);
+
+                if (billData == null)
+                {
+                    return Json(new { success = false, message = "Bill not found." }, JsonRequestBehavior.AllowGet);
+                }
+
+                // Generate PDF-optimized HTML
+                string htmlContent = GenerateBillHTML(billData, billId, forPDF: true);
+
+                // You can integrate with libraries like iTextSharp, Rotativa, or wkhtmltopdf
+                // For now, returning URL for client-side PDF generation
+                return Json(new
+                {
+                    success = true,
+                    pdfUrl = Url.Action("PrintBill", "PatientBilling", new { billId = billId }),
+                    fileName = $"Bill_{billData.BillSummary.BillNo}_{DateTime.Now:yyyyMMdd}.pdf"
+                }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "Error generating PDF: " + ex.Message }, JsonRequestBehavior.AllowGet);
             }
         }
     }

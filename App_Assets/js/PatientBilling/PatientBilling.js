@@ -152,20 +152,17 @@ function SaveBill() {
         data: JSON.stringify(patientBillData), // Convert JavaScript object to JSON string
         success: function (response) {
             if (response.success === true) { // Assuming result.Item1 is status (1 for success)
-                toastr.success(response.message + ' with Bill No: ' + response.billId);
+                var billId = response.billId;
+                var billNo = response.billNo;
+                toastr.success(`Bill saved successfully! Bill No: ${billNo}`);
                 clearfields(); // Clear the form on successful save
                 $("#invtable").DataTable().clear().draw();
                 $("#paymentGrid").DataTable().clear().draw();
                 // You can add logic here to redirect, print the bill, etc.
                 setTimeout(function () {
-                    var printUrl = '/PatientBilling/PrintBill/' + response.billId;
-                    var printWindow = window.open(printUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
-
-                    // Focus the print window
-                    if (printWindow) {
-                        printWindow.focus();
-                    }
+                    showPrintPreview(billId);
                 }, 1000);
+
             } else {
                 toastr.error(response.message);
             }
@@ -630,21 +627,46 @@ $(document).ready(function () {
 });
 
 $(document).ready(function () {
-    // Auto-search when mobile number is entered (10 digits)
+    let searchTimeout;
+
+    // Enhanced input handler with debouncing
     $('#MobileNo').on('input', function () {
-        var mobile = $(this).val();
-        if (mobile.length === 10) {
-            searchPatients(mobile);
+        var searchValue = $(this).val().trim();
+
+        // Clear previous timeout
+        //if (searchTimeout) {
+        //    clearTimeout(searchTimeout);
+        //}
+
+        // Add visual feedback
+        updateSearchInputState(searchValue);
+
+        // Debounce search (wait 1000ms after user stops typing)
+        //if (searchValue.length >= 4) {
+        //    searchTimeout = setTimeout(function () {
+        //        searchPatients(searchValue);
+        //    }, 1000);
+        //}
+    });
+
+    // Manual search button - immediate search
+    $('#btnSearchPatient').click(function () {
+        var searchValue = $('#MobileNo').val().trim();
+        if (searchValue.length >= 4) {
+            searchPatients(searchValue);
+        } else {
+            toastr.warning('Please enter at least 4 characters (mobile number or UHID).');
         }
     });
 
-    // Manual search button
-    $('#btnSearchPatient').click(function () {
-        var mobile = $('#MobileNo').val();
-        if (mobile.length >= 10) {
-            searchPatients(mobile);
-        } else {
-            toastr.warning('Please enter a valid 10-digit mobile number.');
+    // Enhanced keypress handler
+    $('#MobileNo').on('keydown', function (e) {
+        if (e.keyCode === 13) { // Enter key
+            e.preventDefault();
+            var searchValue = $(this).val().trim();
+            if (searchValue.length >= 4) {
+                searchPatients(searchValue);
+            }
         }
     });
 
@@ -652,37 +674,93 @@ $(document).ready(function () {
     $('#btnNewPatient').click(function () {
         $('#patientSearchModal').modal('hide');
         clearPatientForm(false);
-        $('#hiddenPatientId').val('');   // reset to force new insert
+        $('#hiddenPatientId').val('');
         $('#PatName').focus();
+        resetSearchInputState();
     });
 });
 
-function searchPatients(mobileNo) {
+function updateSearchInputState(searchValue) {
+    var $input = $('#MobileNo');
+    var $searchBtn = $('#btnSearchPatient');
+
+    // Remove previous state classes
+    $input.removeClass('is-mobile is-uhid is-invalid');
+
+    if (searchValue.length === 0) {
+        $searchBtn.html('<i class="fa fa-search"></i> Search');
+        return;
+    }
+
+    if (isValidMobileNumber(searchValue)) {
+        $input.addClass('is-mobile');
+        $searchBtn.html('<i class="fa fa-phone"></i> Search Mobile');
+    } else if (isValidUHID(searchValue)) {
+        $input.addClass('is-uhid');
+        $searchBtn.html('<i class="fa fa-id-card"></i> Search UHID');
+    } else if (searchValue.length >= 4) {
+        $input.addClass('is-uhid'); // Partial UHID
+        $searchBtn.html('<i class="fa fa-id-card"></i> Search UHID');
+    } else {
+        $input.addClass('is-invalid');
+        $searchBtn.html('<i class="fa fa-search"></i> Search');
+    }
+}
+function resetSearchInputState() {
+    $('#MobileNo').removeClass('is-mobile is-uhid is-invalid');
+    $('#btnSearchPatient').html('<i class="fa fa-search"></i> Search');
+}
+
+function isValidMobileNumber(input) {
+    return input && input.length === 10 && /^\d+$/.test(input);
+}
+
+function isValidUHID(input) {
+    return input && (
+        input.toUpperCase().startsWith('EMED') ||
+        (input.length >= 4 && /^[A-Za-z0-9]+$/.test(input))
+    );
+}
+function searchPatients(searchValue) {
+    // Show loading state
+    var $searchBtn = $('#btnSearchPatient');
+    var originalText = $searchBtn.html();
+    $searchBtn.html('<i class="fa fa-spinner fa-spin"></i> Searching...').prop('disabled', true);
+
     $.ajax({
         url: '/PatientBilling/SearchPatients',
         type: 'POST',
         dataType: 'json',
-        data: { mobileNo: mobileNo },
+        data: { searchValue: searchValue },
         success: function (response) {
             if (response.success && response.patients && response.patients.length > 0) {
-                populatePatientSearchModal(response.patients);
+                populatePatientSearchModal(response.patients, response.searchType, response.searchValue);
                 $('#patientSearchModal').modal('show');
+                toastr.success(`Found ${response.patients.length} patient(s) by ${response.searchType}`);
             } else {
-                // No existing patients found - user can enter new details
+                // No existing patients found
                 clearPatientForm(false);
+                $('#hiddenPatientId').val('');
                 $('#PatName').focus();
-                toastr.info('No existing patients found with this mobile number. Please enter patient details.');
+                toastr.info(`No patients found with this ${isValidMobileNumber(searchValue) ? 'mobile number' : 'UHID'}. Please enter patient details.`);
             }
         },
         error: function (xhr, status, error) {
             toastr.error('Error searching patients: ' + error);
+        },
+        complete: function () {
+            // Restore button state
+            $searchBtn.html(originalText).prop('disabled', false);
         }
     });
 }
 
-function populatePatientSearchModal(patients) {
+function populatePatientSearchModal(patients, searchType, searchValue) {
     var tbody = $('#patientSearchTable tbody');
     tbody.empty();
+
+    // Update modal title
+    $('#patientSearchModal .modal-title').text(`Patients found by ${searchType}: ${searchValue}`);
 
     patients.forEach(function (patient) {
         var row = `
@@ -694,7 +772,7 @@ function populatePatientSearchModal(patients) {
                 <td>
                     <button class="btn btn-sm btn-success select-patient" 
                             data-patient='${JSON.stringify(patient)}'>
-                        Select
+                        <i class="fa fa-check"></i> Select
                     </button>
                 </td>
             </tr>
@@ -708,6 +786,7 @@ function populatePatientSearchModal(patients) {
         fillPatientForm(patientData);
         $('#patientSearchModal').modal('hide');
         toastr.success('Patient details loaded successfully!');
+        resetSearchInputState();
     });
 }
 
@@ -716,7 +795,16 @@ function fillPatientForm(patient) {
     $('#PatName').val(patient.patName);
     $('#Age').val(patient.age);
     $('#AgeType').val(patient.ageType || 'Years');
-    $('#Gender').val(patient.gender || '');
+    $('#AgeType').val(
+        patient.ageType?.toLowerCase() === "year(s)" ? 1 :
+            patient.ageType?.toLowerCase() === "month(s)" ? 2 :
+                patient.ageType?.toLowerCase() === "day(s)" ? 3 : ''
+    );
+    $('#Gender').val(
+        patient.gender?.toLowerCase() === "male" ? 1 :
+            patient.gender?.toLowerCase() === "female" ? 2 :
+                patient.gender?.toLowerCase() === "others" ? 3 : ''
+    );
     $('#Ref').val(patient.ref || '');
     $('#Area').val(patient.area || '');
     $('#City').val(patient.city || '');
@@ -739,3 +827,215 @@ function clearPatientForm(includeMobile = true) {
     $('#Email').val('');
     $('#hiddenPatientId').val('');
 }
+
+function showPrintPreview(billId) {
+    currentBillId = billId;
+    $('#printPreviewModal').modal('show');
+    loadBillPreview(billId);
+}
+
+function loadBillPreview(billId) {
+    $.ajax({
+        url: '/PatientBilling/PrintBillModal/' + billId,
+        type: 'GET',
+        dataType: 'json',
+        success: function (response) {
+            if (response.success) {
+                $('#printPreviewContent').html(response.htmlContent);
+                $('#billNoDisplay').text(response.billNo);
+                currentBillData = response;
+
+                // Pre-fill email if patient has email
+                if (response.patientEmail) {
+                    $('#emailTo').val(response.patientEmail);
+                }
+            } else {
+                $('#printPreviewContent').html(`
+                    <div class="alert alert-danger">
+                        <i class="fa fa-exclamation-triangle"></i> 
+                        Error loading bill preview: ${response.message}
+                    </div>
+                `);
+            }
+        },
+        error: function () {
+            $('#printPreviewContent').html(`
+                <div class="alert alert-danger">
+                    <i class="fa fa-exclamation-triangle"></i> 
+                    Error loading bill preview. Please try again.
+                </div>
+            `);
+        }
+    });
+}
+
+// Print Button Handler
+$(document).on('click', '#btnPrintBill', function () {
+    if (!currentBillId) return;
+
+    // Option 1: Print modal content directly
+    printModalContent();
+
+    // Option 2: Open in new window for printing (uncomment if preferred)
+    // window.open('/PatientBilling/PrintBill/' + currentBillId, '_blank');
+});
+
+function printModalContent() {
+    var printContent = $('#printPreviewContent').html();
+    var printWindow = window.open('', '_blank');
+
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Print Bill</title>
+            <style>
+                @media print {
+                    body { margin: 0; }
+                    .bill-container { width: 100%; }
+                }
+            </style>
+        </head>
+        <body onload="window.print(); window.close();">
+            ${printContent}
+        </body>
+        </html>
+    `);
+
+    printWindow.document.close();
+}
+
+// PDF Export Button Handler
+$(document).on('click', '#btnExportPDF', function () {
+    if (!currentBillId) return;
+
+    $(this).prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Generating PDF...');
+
+    $.ajax({
+        url: '/PatientBilling/ExportBillPDF/' + currentBillId,
+        type: 'GET',
+        dataType: 'json',
+        success: function (response) {
+            if (response.success) {
+                // Option 1: Client-side PDF generation using jsPDF or similar
+                generateClientPDF();
+
+                // Option 2: Server-side PDF (uncomment if implementing server-side PDF)
+                // window.open(response.pdfUrl, '_blank');
+
+                toastr.success('PDF generated successfully!');
+            } else {
+                toastr.error('Error generating PDF: ' + response.message);
+            }
+        },
+        error: function () {
+            toastr.error('Error generating PDF. Please try again.');
+        },
+        complete: function () {
+            $('#btnExportPDF').prop('disabled', false).html('<i class="fa fa-file-pdf-o"></i> Export PDF');
+        }
+    });
+});
+
+// Client-side PDF generation (requires jsPDF library)
+function generateClientPDF() {
+    // Add jsPDF library reference: <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    if (typeof window.jsPDF === 'undefined') {
+        // Fallback to print
+        window.open('/PatientBilling/PrintBill/' + currentBillId, '_blank');
+        return;
+    }
+
+    const { jsPDF } = window.jsPDF;
+    const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+    });
+
+    // Get bill content
+    const billContent = document.getElementById('printPreviewContent');
+
+    html2canvas(billContent, {
+        scale: 2,
+        useCORS: true
+    }).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        const imgWidth = 210;
+        const pageHeight = 295;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        let heightLeft = imgHeight;
+
+        let position = 0;
+
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+
+        while (heightLeft >= 0) {
+            position = heightLeft - imgHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+        }
+
+        const fileName = `Bill_${currentBillData.billNo}_${new Date().toISOString().slice(0, 10)}.pdf`;
+        pdf.save(fileName);
+    });
+}
+
+// Email Button Handler
+$(document).on('click', '#btnEmailBill', function () {
+    $('#emailBillModal').modal('show');
+});
+
+// Send Email Handler
+$(document).on('click', '#btnSendEmail', function () {
+    var emailTo = $('#emailTo').val();
+    var emailSubject = $('#emailSubject').val();
+    var emailMessage = $('#emailMessage').val();
+
+    if (!emailTo) {
+        toastr.error('Please enter email address');
+        return;
+    }
+
+    $(this).prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Sending...');
+
+    $.ajax({
+        url: '/PatientBilling/EmailBill',
+        type: 'POST',
+        data: {
+            billId: currentBillId,
+            emailTo: emailTo,
+            emailSubject: emailSubject,
+            emailMessage: emailMessage
+        },
+        success: function (response) {
+            if (response.success) {
+                toastr.success('Bill emailed successfully!');
+                $('#emailBillModal').modal('hide');
+            } else {
+                toastr.error('Error sending email: ' + response.message);
+            }
+        },
+        error: function () {
+            toastr.error('Error sending email. Please try again.');
+        },
+        complete: function () {
+            $('#btnSendEmail').prop('disabled', false).html('<i class="fa fa-send"></i> Send Email');
+        }
+    });
+});
+
+// Reset modal when closed
+$('#printPreviewModal').on('hidden.bs.modal', function () {
+    currentBillId = null;
+    currentBillData = null;
+    $('#printPreviewContent').html(`
+        <div class="text-center">
+            <i class="fa fa-spinner fa-spin fa-3x"></i>
+            <p>Loading bill preview...</p>
+        </div>
+    `);
+});

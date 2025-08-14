@@ -9,6 +9,9 @@ namespace eMedLis.Models.PatientBilling
         [Key]
         public int BillSummaryId { get; set; } // Primary Key for this table
 
+        [StringLength(20)]
+        public string BillNo { get; set; }
+
         [Required]
         public int PatientInfoId { get; set; } // Foreign Key to PatientInfo
 
