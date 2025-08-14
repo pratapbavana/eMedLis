@@ -203,6 +203,8 @@
     <Compile Include="Models\LookupDB.cs" />
     <Compile Include="Models\ManageViewModels.cs" />
     <Compile Include="Models\PatientBilling\BillDetail.cs" />
+    <Compile Include="Models\PatientBilling\BillListItem.cs" />
+    <Compile Include="Models\PatientBilling\BillListResponse.cs" />
     <Compile Include="Models\PatientBilling\BillSaveResult.cs" />
     <Compile Include="Models\PatientBilling\BillSummary.cs" />
     <Compile Include="Models\PatientBilling\CompleteBillData.cs" />

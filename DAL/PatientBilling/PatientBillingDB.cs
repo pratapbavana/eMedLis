@@ -365,5 +365,78 @@ namespace eMedLis.DAL.PatientBilling
             }
             return null;
         }
+
+        public BillListResponse GetRecentBills(int days = 30, int pageSize = 50, int pageNumber = 1)
+        {
+            var result = new BillListResponse
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+
+            using (SqlConnection connection = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("usp_GetRecentBills", connection))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@Days", days);
+                    cmd.Parameters.AddWithValue("@PageSize", pageSize);
+                    cmd.Parameters.AddWithValue("@PageNumber", pageNumber);
+
+                    connection.Open();
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        // First result set - Bills
+                        while (reader.Read())
+                        {
+                            result.Bills.Add(new BillListItem
+                            {
+                                BillSummaryId = (int)reader["BillSummaryId"],
+                                BillNo = reader["BillNo"]?.ToString(),
+                                BillDate = Convert.ToDateTime(reader["BillDate"]),
+                                TotalBill = Convert.ToDecimal(reader["TotalBill"]),
+                                PaidAmount = Convert.ToDecimal(reader["PaidAmount"]),
+                                DueAmount = Convert.ToDecimal(reader["DueAmount"]),
+                                NetAmount = Convert.ToDecimal(reader["NetAmount"]),
+                                PatName = reader["PatName"].ToString(),
+                                Age = Convert.ToInt32(reader["Age"]),
+                                AgeType = reader["AgeType"]?.ToString(),
+                                Gender = reader["Gender"]?.ToString(),
+                                Ref = reader["Ref"]?.ToString() ?? "Self",
+                                MobileNo = reader["MobileNo"].ToString(),
+                                UHID = reader["UHID"]?.ToString(),
+                                PaymentStatus = reader["PaymentStatus"].ToString()
+                            });
+                        }
+
+                        // Second result set - Total count
+                        if (reader.NextResult() && reader.Read())
+                        {
+                            result.TotalRecords = Convert.ToInt32(reader["TotalRecords"]);
+                        }
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        public bool CancelBill(int billSummaryId, string cancelReason, string cancelledBy)
+        {
+            using (SqlConnection connection = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("usp_CancelBill", connection))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@BillSummaryId", billSummaryId);
+                    cmd.Parameters.AddWithValue("@CancelReason", cancelReason);
+                    cmd.Parameters.AddWithValue("@CancelledBy", cancelledBy);
+
+                    connection.Open();
+                    int rowsAffected = cmd.ExecuteNonQuery();
+                    return rowsAffected > 0;
+                }
+            }
+        }
     }
 }

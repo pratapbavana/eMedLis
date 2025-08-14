@@ -25,10 +25,16 @@ namespace eMedLis
             defaults: new { controller = "PatientBilling", action = "PrintBillModal" },
             constraints: new { billId = @"\d+" }
         );
-            routes.MapRoute(
+           routes.MapRoute(
            name: "ExportBillPDF",
            url: "PatientBilling/ExportBillPDF/{billId}",
            defaults: new { controller = "PatientBilling", action = "ExportBillPDF" },
+           constraints: new { billId = @"\d+" }
+       );
+           routes.MapRoute(
+           name: "ViewBill",
+           url: "PatientBilling/ViewBill/{billId}",
+           defaults: new { controller = "PatientBilling", action = "ViewBill" },
            constraints: new { billId = @"\d+" }
        );
 

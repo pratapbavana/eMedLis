@@ -47,6 +47,10 @@
             $('#btnAddPay').click(); // Trigger the click event on the Add Payment button
         }
     });
+
+    $('#daysFilter, #statusFilter').change(function () {
+        loaddatatable();
+    });
 })
 
 function ToggleForm() {
@@ -218,13 +222,23 @@ function clearfields() {
 
 // #region Load Bills
 
+$(() => {
+    loaddatatable()
+});
 function loaddatatable() {
-
-    var a = $("#depttable").DataTable({
-        "order": [[1, 'asc']],
+    if ($.fn.DataTable.isDataTable('#recentBillsTable')) {
+        $('#recentBillsTable').DataTable().clear().destroy();
+    }
+    var filterDetails = {
+        days: $('#daysFilter').val() || 30,
+        status: $('#statusFilter').val() || ''
+    };
+    var a = $("#recentBillsTable").DataTable({
+        "order": [[0, 'desc']],
         ajax: {
-            url: '/Investigation/List',
+            url: '/PatientBilling/GetRecentBillsList',
             method: "GET",
+            data: filterDetails,
             dataSrc: function (json) {
                 return json;
             }
@@ -232,33 +246,54 @@ function loaddatatable() {
 
         scrollX: true,
         columns: [
+            { data: 'BillDate' },
+            { data: 'BillNo' },
+            { data: 'PatientName' },
+            { data: 'AgeGender' },
+            { data: 'ReferringDoctor' },
             {
-                "title": "Serial",
-                render: function (data, type, row, meta) {
-                    return meta.row + meta.settings._iDisplayStart + 1;
-                }
-            },
-            { data: 'InvName' },
-            { data: 'SubDeptName' },
-            { data: 'Rate' },
-
-            {
-                data: 'Active',
-                render: function (data, type, row) {
-                    if (data == true) {
-                        return '<span class="cbadge cbadge-pill cbadge-outline-success">ACTIVE</span>'
-                    }
-                    else {
-                        return '<span class="cbadge cbadge-pill cbadge-outline-danger">INACTIVE</span>'
-                    }
-
-                }
+                data: 'TotalAmount',
+                className: 'text-right'
             },
             {
-                data: 'Id',
-                render: function (data, type, row) {
-
-                    return '<a href="#" data-toggle="modal" data-target="#modal_aside_left" onclick="return GetInvbyId(' + data + ');">Edit</a>'
+                data: 'PaidAmount',
+                className: 'text-right'
+            },
+            {
+                data: 'Balance',
+                className: 'text-right',
+                render: function (val) {
+                    return val !== '0.00'
+                        ? '<span class="text-danger">₹' + val + '</span>'
+                        : '₹0.00';
+                }
+            },
+            {
+                data: 'PaymentStatus',
+                render: function (status, type, row) {
+                    return '<span class="badge ' + row.StatusClass + '">' + status + '</span>';
+                },
+                orderable: false,
+                searchable: false
+            },
+            {
+                data: null,
+                orderable: false,
+                searchable: false,
+                width: '120px',
+                render: function (_, type, row) {
+                    return `
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-info" onclick="printBill(${row.BillSummaryId})">
+                                <i class="fa fa-print"></i>
+                            </button>
+                            <button class="btn btn-primary" onclick="viewBill(${row.BillSummaryId})">
+                                <i class="fa fa-eye"></i>
+                            </button>
+                            <button class="btn btn-danger" onclick="cancelBill(${row.BillSummaryId}, '${row.BillNo}', '${row.PatientName}')">
+                                <i class="fa fa-ban"></i>
+                            </button>
+                        </div>`;
                 }
             }
         ],
@@ -273,15 +308,19 @@ function loaddatatable() {
     $('#global_filter').keyup(function () {
         a.search($(this).val()).draw();
     })
-    a.on('order.dt search.dt', function () {
-        a.column(0, { search: 'applied', order: 'applied' }).nodes().each(function (cell, i) {
-            cell.innerHTML = i + 1;
-        });
-    }).draw();
+    //a.on('order.dt search.dt', function () {
+    //    a.column(0, { search: 'applied', order: 'applied' }).nodes().each(function (cell, i) {
+    //        cell.innerHTML = i + 1;
+    //    });
+    //}).draw();
 }
 //#endregion
 
 // #region Add inv to List
+
+function refreshBillsGrid() {
+    $('#recentBillsTable').DataTable().ajax.reload(null, false);
+}
 
 function addinvtolist(Id) {
     if (!Id) {
@@ -939,7 +978,6 @@ $(document).on('click', '#btnExportPDF', function () {
 
 // Client-side PDF generation (requires jsPDF library)
 function generateClientPDF() {
-    // Add jsPDF library reference: <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     if (typeof window.jsPDF === 'undefined') {
         // Fallback to print
@@ -1039,3 +1077,167 @@ $('#printPreviewModal').on('hidden.bs.modal', function () {
         </div>
     `);
 });
+
+// Action Functions
+function printBill(billId) {
+    showPrintPreview(billId);
+}
+
+function viewBill(billId) {
+    currentBillToView = billId;
+
+    $.ajax({
+        url: '/PatientBilling/ViewBill/' + billId,
+        type: 'GET',
+        success: function (response) {
+            if (response.success) {
+                populateViewBillModal(response.billData);
+                $('#viewBillModal').modal('show');
+            } else {
+                toastr.error('Error loading bill: ' + response.message);
+            }
+        },
+        error: function () {
+            toastr.error('Error loading bill details.');
+        }
+    });
+}
+
+function populateViewBillModal(billData) {
+    $('#viewBillNo').text(billData.billNo);
+
+    var content = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6><i class="fa fa-user"></i> Patient Information</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Name:</strong></td><td>${billData.patient.name}</td></tr>
+                    <tr><td><strong>UHID:</strong></td><td>${billData.patient.uhid || 'N/A'}</td></tr>
+                    <tr><td><strong>Mobile:</strong></td><td>${billData.patient.mobile}</td></tr>
+                    <tr><td><strong>Age/Gender:</strong></td><td>${billData.patient.age}/${billData.patient.gender}</td></tr>
+                    <tr><td><strong>Referred By:</strong></td><td>${billData.patient.referredBy || 'Self'}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6><i class="fa fa-calculator"></i> Bill Summary</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Total Bill:</strong></td><td>₹${billData.summary.totalBill}</td></tr>
+                    <tr><td><strong>Discount:</strong></td><td>₹${billData.summary.discount}</td></tr>
+                    <tr><td><strong>Net Amount:</strong></td><td><strong>₹${billData.summary.netAmount}</strong></td></tr>
+                    <tr><td><strong>Paid Amount:</strong></td><td>₹${billData.summary.paidAmount}</td></tr>
+                    <tr><td><strong>Due Amount:</strong></td><td class="text-danger"><strong>₹${billData.summary.dueAmount}</strong></td></tr>
+                </table>
+            </div>
+        </div>
+        
+        <div class="row mt-3">
+            <div class="col-12">
+                <h6><i class="fa fa-flask"></i> Investigations</h6>
+                <table class="table table-sm table-striped">
+                    <thead>
+                        <tr>
+                            <th>Investigation</th>
+                            <th>Rate</th>
+                            <th>Discount</th>
+                            <th>Net Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+
+    billData.investigations.forEach(function (inv) {
+        content += `
+            <tr>
+                <td>${inv.name}</td>
+                <td>₹${inv.rate}</td>
+                <td>₹${inv.discount}</td>
+                <td><strong>₹${inv.netAmount}</strong></td>
+            </tr>
+        `;
+    });
+
+    content += `
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="row mt-3">
+            <div class="col-12">
+                <h6><i class="fa fa-credit-card"></i> Payment Details</h6>
+                <table class="table table-sm table-striped">
+                    <thead>
+                        <tr>
+                            <th>Payment Mode</th>
+                            <th>Amount</th>
+                            <th>Reference No</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+
+    billData.payments.forEach(function (payment) {
+        content += `
+            <tr>
+                <td>${payment.mode}</td>
+                <td>₹${payment.amount}</td>
+                <td>${payment.refNo || '-'}</td>
+            </tr>
+        `;
+    });
+
+    content += `
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+
+    $('#viewBillContent').html(content);
+}
+
+function cancelBill(billId, billNo, patientName) {
+    currentBillToCancel = billId;
+    $('#cancelBillNo').text(billNo);
+    $('#cancelPatientName').text(patientName);
+    $('#cancelReason').val('');
+    $('#cancelBillModal').modal('show');
+}
+
+function confirmCancelBill() {
+    var reason = $('#cancelReason').val().trim();
+
+    if (!reason) {
+        toastr.error('Please provide a reason for cancellation.');
+        return;
+    }
+
+    $.ajax({
+        url: '/PatientBilling/CancelBill',
+        type: 'POST',
+        data: {
+            billSummaryId: currentBillToCancel,
+            cancelReason: reason
+        },
+        success: function (response) {
+            if (response.success) {
+                toastr.success('Bill cancelled successfully.');
+                $('#cancelBillModal').modal('hide');
+                loadBillsGrid(currentPage); // Refresh current page
+            } else {
+                toastr.error('Error cancelling bill: ' + response.message);
+            }
+        },
+        error: function () {
+            toastr.error('Error cancelling bill. Please try again.');
+        }
+    });
+}
+
+function printBillFromView() {
+    if (currentBillToView) {
+        showPrintPreview(currentBillToView);
+        $('#viewBillModal').modal('hide');
+    }
+}
+

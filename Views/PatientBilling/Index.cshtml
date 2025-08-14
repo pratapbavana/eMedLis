@@ -25,16 +25,40 @@
 
             </div>
             <div class="card-body">
-                <table class="table table-sm table-bordered table-striped nowrap" style="width:100%" id="billstable">
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label>Days Filter:</label>
+                        <select class="form-control form-control-sm" id="daysFilter">
+                            <option value="1" selected>Today</option>
+                            <option value="7">Last 7 Days</option>
+                            <option value="30">Last 30 Days</option>
+                            <option value="90">Last 3 Months</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label>Payment Status:</label>
+                        <select class="form-control form-control-sm" id="statusFilter">
+                            <option value="">All Status</option>
+                            <option value="paid">Paid</option>
+                            <option value="partial">Partial</option>
+                            <option value="unpaid">Unpaid</option>
+                        </select>
+                    </div>
+                </div>
+
+                <table class="table table-sm table-bordered table-striped nowrap" style="width:100%" id="recentBillsTable">
                     <thead>
                         <tr>
-                            <th>Serial</th>
+                            <th>Date & Time</th>
                             <th>Bill No</th>
-                            <th>Bill Date</th>
                             <th>Patient Name</th>
-                            <th>Mobile No</th>
-                            <th>Amount</th>
-                            <th>Action</th>
+                            <th>Age / Gender</th>
+                            <th>Referring Doctor</th>
+                            <th>Total Amount</th>
+                            <th>Paid Amount</th>
+                            <th>Balance</th>
+                            <th>Payment Status</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
 
@@ -364,6 +388,64 @@
                     <i class="fa fa-send"></i> Send Email
                 </button>
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bill View Modal -->
+<div class="modal fade" id="viewBillModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fa fa-eye"></i> Bill Details - <span id="viewBillNo"></span>
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="viewBillContent">
+                <!-- Bill details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="printBillFromView()">
+                    <i class="fa fa-print"></i> Print
+                </button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Bill Modal -->
+<div class="modal fade" id="cancelBillModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fa fa-ban"></i> Cancel Bill
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to cancel this bill?</p>
+                <p><strong>Bill No:</strong> <span id="cancelBillNo"></span></p>
+                <p><strong>Patient:</strong> <span id="cancelPatientName"></span></p>
+
+                <div class="form-group">
+                    <label>Reason for Cancellation:</label>
+                    <textarea class="form-control" id="cancelReason" rows="3" required
+                              placeholder="Please provide reason for cancelling this bill..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" onclick="confirmCancelBill()">
+                    <i class="fa fa-ban"></i> Cancel Bill
+                </button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
             </div>
         </div>
     </div>

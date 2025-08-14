@@ -536,5 +536,149 @@ namespace eMedLis.Controllers
                 return Json(new { success = false, message = "Error generating PDF: " + ex.Message }, JsonRequestBehavior.AllowGet);
             }
         }
+
+        // In Controllers/PatientBillingController.cs
+
+        [HttpPost]
+        public JsonResult EmailBill(int billId, string emailTo, string emailSubject, string emailMessage)
+        {
+            try
+            {
+                // Implement email functionality using System.Net.Mail or SendGrid
+                // This is a placeholder - you'll need to implement actual email sending
+
+                PatientBillingDB db = new PatientBillingDB();
+                var billData = db.GetCompleteBillForPrint(billId);
+
+                if (billData == null)
+                {
+                    return Json(new { success = false, message = "Bill not found." });
+                }
+
+                // Generate HTML content for email
+                string htmlContent = GenerateBillHTML(billData, billId, forModal: false);
+
+                // TODO: Implement email sending logic
+                // SendEmail(emailTo, emailSubject, emailMessage, htmlContent);
+
+                return Json(new { success = true, message = "Email sent successfully!" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "Error sending email: " + ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public JsonResult GetRecentBillsList(int days = 30)
+        {
+            try
+            {
+                var db = new PatientBillingDB();
+                // Reuse DAL but ignore paging parameters
+                var response = db.GetRecentBills(days, pageSize: int.MaxValue, pageNumber: 1);
+                var bills = response.Bills.Select(b => new {
+                    b.BillSummaryId,
+                    b.BillNo,
+                    BillDate = b.BillDate.ToString("dd/MM/yyyy HH:mm"),
+                    PatientName = b.PatName,
+                    AgeGender = b.AgeGenderDisplay,
+                    ReferringDoctor = b.Ref,
+                    TotalAmount = b.TotalBill.ToString("F2"),
+                    PaidAmount = b.PaidAmount.ToString("F2"),
+                    Balance = b.DueAmount.ToString("F2"),
+                    PaymentStatus = b.PaymentStatus,
+                    StatusClass = b.PaymentStatusClass
+                });
+                return Json(bills, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        [HttpPost]
+        public JsonResult CancelBill(int billSummaryId, string cancelReason)
+        {
+            try
+            {
+                PatientBillingDB db = new PatientBillingDB();
+                bool result = db.CancelBill(billSummaryId, cancelReason, "Current User"); // Replace with actual user
+
+                if (result)
+                {
+                    return Json(new { success = true, message = "Bill cancelled successfully." });
+                }
+                else
+                {
+                    return Json(new { success = false, message = "Failed to cancel bill." });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "Error cancelling bill: " + ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public ActionResult ViewBill(int billId)
+        {
+            try
+            {
+                PatientBillingDB db = new PatientBillingDB();
+                var billData = db.GetCompleteBillForPrint(billId);
+
+                if (billData == null)
+                {
+                    return Json(new { success = false, message = "Bill not found." }, JsonRequestBehavior.AllowGet);
+                }
+
+                return Json(new
+                {
+                    success = true,
+                    billData = new
+                    {
+                        billNo = billData.BillSummary.BillNo,
+                        BillDate = billData.BillSummary.BillDate.ToString("dd/MM/yyyy HH:mm"),
+                        patient = new
+                        {
+                            name = billData.PatientInfo.PatName,
+                            uhid = billData.PatientInfo.UHID,
+                            mobile = billData.PatientInfo.MobileNo,
+                            age = billData.PatientInfo.Age,
+                            gender = billData.PatientInfo.Gender,
+                            referredBy = billData.PatientInfo.Ref
+                        },
+                        summary = new
+                        {
+                            totalBill = billData.BillSummary.TotalBill.ToString("F2"),
+                            discount = billData.BillSummary.TotalDiscountAmount.ToString("F2"),
+                            netAmount = billData.BillSummary.NetAmount.ToString("F2"),
+                            paidAmount = billData.BillSummary.PaidAmount.ToString("F2"),
+                            dueAmount = billData.BillSummary.DueAmount.ToString("F2")
+                        },
+                        investigations = billData.BillDetails.Select(d => new
+                        {
+                            name = d.InvName,
+                            rate = d.Rate.ToString("F2"),
+                            discount = d.DiscountAmount.ToString("F2"),
+                            netAmount = d.NetAmount.ToString("F2")
+                        }),
+                        payments = billData.PaymentDetails.Select(p => new
+                        {
+                            mode = p.PaymentMode,
+                            amount = p.Amount.ToString("F2"),
+                            refNo = p.RefNo
+                        })
+                    }
+                }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "Error loading bill: " + ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
     }
 }

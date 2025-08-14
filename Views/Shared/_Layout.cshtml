@@ -11,7 +11,10 @@
     @Styles.Render("~/Content/uicss")
     <link href="@Url.Content("~/App_Assets/css/custom/custom.css")" rel="stylesheet" />
     <link href="@Url.Content("~/Content/AdminLTE/adminlte.min.css")" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     @Scripts.Render("~/bundles/modernizr")
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body class="hold-transition sidebar-mini">
     <div class="wrapper">
@@ -43,7 +46,6 @@
     @Scripts.Render("~/bundles/datatable")
     @Scripts.Render("~/bundles/uijs")
     <script src="@Url.Content("~/Scripts/AdminLTE/adminlte.min.js")"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     @RenderSection("scripts", required: false)
     <script>
         /** add active class and stay opened when selected */
