@@ -128,14 +128,21 @@ function SaveBill() {
         });
     });
 
+    var existingPatientId = $('#hiddenPatientId').val();
+    if (existingPatientId) {
+        existingPatientId = parseInt(existingPatientId, 10);
+    } else {
+        existingPatientId = null;
+    }
+
     // --- Bundle all collected data into the ViewModel structure ---
     var patientBillData = {
+        PatientInfoId: existingPatientId,  
         PatientDetails: patientDetails,
         SummaryDetails: billSummary,
         BillDetails: billDetails,
         PaymentDetails: paymentDetails
     };
-
     // --- AJAX Call to save the bill ---
     $.ajax({
         url: '/PatientBilling/SaveBill', // Matches your PatientBillingController and SaveBill action
@@ -145,11 +152,20 @@ function SaveBill() {
         data: JSON.stringify(patientBillData), // Convert JavaScript object to JSON string
         success: function (response) {
             if (response.success === true) { // Assuming result.Item1 is status (1 for success)
-                toastr.success(response.message + ' with Bill No: ' + response.billId); 
+                toastr.success(response.message + ' with Bill No: ' + response.billId);
                 clearfields(); // Clear the form on successful save
                 $("#invtable").DataTable().clear().draw();
                 $("#paymentGrid").DataTable().clear().draw();
                 // You can add logic here to redirect, print the bill, etc.
+                setTimeout(function () {
+                    var printUrl = '/PatientBilling/PrintBill/' + response.billId;
+                    var printWindow = window.open(printUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+
+                    // Focus the print window
+                    if (printWindow) {
+                        printWindow.focus();
+                    }
+                }, 1000);
             } else {
                 toastr.error(response.message);
             }
@@ -170,6 +186,7 @@ function clearfields() {
     $("#PatList").hide();
     $("#Billing").show();
     $('#header').html("Patient Billing");
+    clearPatientForm(true);
     $('#MobileNo').val("");
     $('#PatName').val("");
     $('#Age').val("");
@@ -180,6 +197,7 @@ function clearfields() {
     $('#City').val("");
     $('#Email').val("");
     $('#Inv').val("");
+    $('.form-control').removeClass("valid is-invalid");
     $('#MobileNo').removeClass("valid is-invalid");
     $('#PatName').removeClass("valid is-invalid");
     $('#Age').removeClass("valid is-invalid");
@@ -610,3 +628,114 @@ $(document).ready(function () {
         }
     });
 });
+
+$(document).ready(function () {
+    // Auto-search when mobile number is entered (10 digits)
+    $('#MobileNo').on('input', function () {
+        var mobile = $(this).val();
+        if (mobile.length === 10) {
+            searchPatients(mobile);
+        }
+    });
+
+    // Manual search button
+    $('#btnSearchPatient').click(function () {
+        var mobile = $('#MobileNo').val();
+        if (mobile.length >= 10) {
+            searchPatients(mobile);
+        } else {
+            toastr.warning('Please enter a valid 10-digit mobile number.');
+        }
+    });
+
+    // New patient button in modal
+    $('#btnNewPatient').click(function () {
+        $('#patientSearchModal').modal('hide');
+        clearPatientForm(false);
+        $('#hiddenPatientId').val('');   // reset to force new insert
+        $('#PatName').focus();
+    });
+});
+
+function searchPatients(mobileNo) {
+    $.ajax({
+        url: '/PatientBilling/SearchPatients',
+        type: 'POST',
+        dataType: 'json',
+        data: { mobileNo: mobileNo },
+        success: function (response) {
+            if (response.success && response.patients && response.patients.length > 0) {
+                populatePatientSearchModal(response.patients);
+                $('#patientSearchModal').modal('show');
+            } else {
+                // No existing patients found - user can enter new details
+                clearPatientForm(false);
+                $('#PatName').focus();
+                toastr.info('No existing patients found with this mobile number. Please enter patient details.');
+            }
+        },
+        error: function (xhr, status, error) {
+            toastr.error('Error searching patients: ' + error);
+        }
+    });
+}
+
+function populatePatientSearchModal(patients) {
+    var tbody = $('#patientSearchTable tbody');
+    tbody.empty();
+
+    patients.forEach(function (patient) {
+        var row = `
+            <tr>
+                <td>${patient.uhid || 'N/A'}</td>
+                <td>${patient.patName}</td>
+                <td>${patient.age} ${patient.ageType || 'Yrs'} / ${patient.gender || 'N/A'}</td>
+                <td>${patient.lastVisit}</td>
+                <td>
+                    <button class="btn btn-sm btn-success select-patient" 
+                            data-patient='${JSON.stringify(patient)}'>
+                        Select
+                    </button>
+                </td>
+            </tr>
+        `;
+        tbody.append(row);
+    });
+
+    // Handle patient selection
+    $('.select-patient').click(function () {
+        var patientData = JSON.parse($(this).attr('data-patient'));
+        fillPatientForm(patientData);
+        $('#patientSearchModal').modal('hide');
+        toastr.success('Patient details loaded successfully!');
+    });
+}
+
+function fillPatientForm(patient) {
+    $('#MobileNo').val(patient.mobileNo);
+    $('#PatName').val(patient.patName);
+    $('#Age').val(patient.age);
+    $('#AgeType').val(patient.ageType || 'Years');
+    $('#Gender').val(patient.gender || '');
+    $('#Ref').val(patient.ref || '');
+    $('#Area').val(patient.area || '');
+    $('#City').val(patient.city || '');
+    $('#Email').val(patient.email || '');
+
+    // Store patient ID for potential updates
+    $('#hiddenPatientId').val(patient.patientInfoId);
+}
+function clearPatientForm(includeMobile = true) {
+    if (includeMobile) {
+        $('#MobileNo').val('');
+    }
+    $('#PatName').val('');
+    $('#Age').val('');
+    $('#AgeType').val('Years');
+    $('#Gender').val('');
+    $('#Ref').val('');
+    $('#Area').val('');
+    $('#City').val('');
+    $('#Email').val('');
+    $('#hiddenPatientId').val('');
+}

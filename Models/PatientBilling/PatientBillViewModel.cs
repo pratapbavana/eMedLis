@@ -4,6 +4,7 @@ namespace eMedLis.Models.PatientBilling
 {
     public class PatientBillViewModel
     {
+        public int? PatientInfoId { get; set; }
         public PatientInfo PatientDetails { get; set; }
         public BillSummary SummaryDetails { get; set; }
         public List<BillDetail> BillDetails { get; set; } = new List<BillDetail>();

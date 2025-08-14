@@ -8,6 +8,9 @@ namespace eMedLis.Models.PatientBilling
         [Key]
         public int PatientInfoId { get; set; } // Primary Key for this table
 
+        [StringLength(20)]
+        public string UHID { get; set; } // New UHID field
+
         [Required]
         [StringLength(20)]
         public string MobileNo { get; set; }
@@ -36,5 +39,7 @@ namespace eMedLis.Models.PatientBilling
         [StringLength(100)]
         [EmailAddress]
         public string Email { get; set; }
+
+        public DateTime? LastVisit { get; set; }
     }
 }

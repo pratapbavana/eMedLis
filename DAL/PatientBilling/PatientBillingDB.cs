@@ -103,25 +103,35 @@ namespace eMedLis.DAL.PatientBilling
 
         // --- Main Orchestration Method ---
 
+        // In DAL/PatientBilling/PatientBillingDB.cs
         public int SaveCompleteBill(PatientBillViewModel billData)
         {
             int billSummaryId = 0;
 
-            using (SqlConnection connection = new SqlConnection(_connectionString))
+            using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
-                SqlTransaction transaction = connection.BeginTransaction();
+                var transaction = connection.BeginTransaction();
 
                 try
                 {
-                    // 1. Save Patient Info
-                    int patientInfoId = SavePatientInfo(billData.PatientDetails, connection, transaction);
+                    int patientInfoId;
 
-                    // 2. Save Bill Summary (using the newly obtained PatientInfoId)
-                    billData.SummaryDetails.PatientInfoId = patientInfoId; // Ensure FK is set
+                    // 1. Use existing PatientInfoId if provided, otherwise insert new
+                    if (billData.PatientInfoId.HasValue && billData.PatientInfoId.Value > 0)
+                    {
+                        patientInfoId = billData.PatientInfoId.Value;
+                    }
+                    else
+                    {
+                        patientInfoId = SavePatientInfo(billData.PatientDetails, connection, transaction);
+                    }
+
+                    // 2. Save Bill Summary
+                    billData.SummaryDetails.PatientInfoId = patientInfoId;
                     billSummaryId = SaveBillSummary(billData.SummaryDetails, patientInfoId, connection, transaction);
 
-                    // 3. Save Bill Details (Investigations)
+                    // 3. Save Bill Details
                     foreach (var detail in billData.BillDetails)
                     {
                         SaveBillDetail(detail, billSummaryId, connection, transaction);
@@ -133,17 +143,174 @@ namespace eMedLis.DAL.PatientBilling
                         SavePaymentDetail(payment, billSummaryId, connection, transaction);
                     }
 
-                    transaction.Commit(); // Commit the transaction if all saves are successful
+                    transaction.Commit();
+                }
+                catch
+                {
+                    transaction.Rollback();
+                    throw;
+                }
+            }
+
+            return billSummaryId;
+        }
+
+        public CompleteBillData GetCompleteBillForPrint(int billSummaryId)
+        {
+            var result = new CompleteBillData();
+
+            using (SqlConnection connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+
+                try
+                {
+                    // Get Bill Summary
+                    using (SqlCommand cmd = new SqlCommand("usp_GetBillSummary", connection))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@BillSummaryId", billSummaryId);
+
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                result.BillSummary = new BillSummary
+                                {
+                                    BillSummaryId = (int)reader["BillSummaryId"],
+                                    PatientInfoId = (int)reader["PatientInfoId"],
+                                    TotalBill = Convert.ToDecimal(reader["TotalBill"]),
+                                    TotalDiscountAmount = Convert.ToDecimal(reader["TotalDiscountAmount"]),
+                                    NetAmount = Convert.ToDecimal(reader["NetAmount"]),
+                                    PaidAmount = Convert.ToDecimal(reader["PaidAmount"]),
+                                    DueAmount = Convert.ToDecimal(reader["DueAmount"]),
+                                    Remarks = reader["Remarks"]?.ToString()
+                                };
+                            }
+                        }
+                    }
+
+                    if (result.BillSummary != null)
+                    {
+                        // Get Patient Info
+                        using (SqlCommand cmd = new SqlCommand("usp_GetPatientInfo", connection))
+                        {
+                            cmd.CommandType = CommandType.StoredProcedure;
+                            cmd.Parameters.AddWithValue("@PatientInfoId", result.BillSummary.PatientInfoId);
+
+                            using (SqlDataReader reader = cmd.ExecuteReader())
+                            {
+                                if (reader.Read())
+                                {
+                                    result.PatientInfo = new PatientInfo
+                                    {
+                                        PatientInfoId = (int)reader["PatientInfoId"],
+                                        MobileNo = reader["MobileNo"].ToString(),
+                                        PatName = reader["PatName"].ToString(),
+                                        Age = Convert.ToInt32(reader["Age"]),
+                                        AgeType = reader["AgeType"]?.ToString(),
+                                        Gender = reader["Gender"]?.ToString(),
+                                        Ref = reader["Ref"]?.ToString(),
+                                        Area = reader["Area"]?.ToString(),
+                                        City = reader["City"]?.ToString(),
+                                        Email = reader["Email"]?.ToString()
+                                    };
+                                }
+                            }
+                        }
+
+                        // Get Bill Details
+                        using (SqlCommand cmd = new SqlCommand("usp_GetBillDetails", connection))
+                        {
+                            cmd.CommandType = CommandType.StoredProcedure;
+                            cmd.Parameters.AddWithValue("@BillSummaryId", billSummaryId);
+
+                            result.BillDetails = new List<BillDetail>();
+                            using (SqlDataReader reader = cmd.ExecuteReader())
+                            {
+                                while (reader.Read())
+                                {
+                                    result.BillDetails.Add(new BillDetail
+                                    {
+                                        InvId = reader["InvId"].ToString(),
+                                        InvName = reader["InvName"].ToString(),
+                                        Rate = Convert.ToDecimal(reader["Rate"]),
+                                        DiscountAmount = Convert.ToDecimal(reader["DiscountAmount"]),
+                                        DiscountPercent = Convert.ToDecimal(reader["DiscountPercent"]),
+                                        NetAmount = Convert.ToDecimal(reader["NetAmount"])
+                                    });
+                                }
+                            }
+                        }
+
+                        // Get Payment Details
+                        using (SqlCommand cmd = new SqlCommand("usp_GetPaymentDetails", connection))
+                        {
+                            cmd.CommandType = CommandType.StoredProcedure;
+                            cmd.Parameters.AddWithValue("@BillSummaryId", billSummaryId);
+
+                            result.PaymentDetails = new List<PaymentDetail>();
+                            using (SqlDataReader reader = cmd.ExecuteReader())
+                            {
+                                while (reader.Read())
+                                {
+                                    result.PaymentDetails.Add(new PaymentDetail
+                                    {
+                                        PaymentMode = reader["PaymentMode"].ToString(),
+                                        Amount = Convert.ToDecimal(reader["Amount"]),
+                                        RefNo = reader["RefNo"]?.ToString()
+                                    });
+                                }
+                            }
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
-                    transaction.Rollback(); // Rollback on error
-                    // Log the exception (e.g., using a logging framework)
-                    Console.WriteLine("Error saving bill: " + ex.Message);
-                    throw; // Re-throw to be handled by the controller
+                    Console.WriteLine("Error retrieving bill data: " + ex.Message);
+                    throw;
                 }
             }
-            return billSummaryId; // Return the generated BillSummaryId
+
+            return result;
+        }
+        public List<PatientInfo> SearchPatientsByMobile(string mobileNo)
+        {
+            var patients = new List<PatientInfo>();
+
+            using (SqlConnection connection = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("usp_SearchPatientsByMobile", connection))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@MobileNo", mobileNo);
+
+                    connection.Open();
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            patients.Add(new PatientInfo
+                            {
+                                PatientInfoId = (int)reader["PatientInfoId"],
+                                UHID = reader["UHID"]?.ToString(),
+                                PatName = reader["PatName"].ToString(),
+                                MobileNo = reader["MobileNo"].ToString(),
+                                Age = Convert.ToInt32(reader["Age"]),
+                                AgeType = reader["AgeType"]?.ToString(),
+                                Gender = reader["Gender"]?.ToString(),
+                                Ref = reader["Ref"]?.ToString(),
+                                Area = reader["Area"]?.ToString(),
+                                City = reader["City"]?.ToString(),
+                                Email = reader["Email"]?.ToString(),
+                                LastVisit = reader["LastVisit"] as DateTime?
+                            });
+                        }
+                    }
+                }
+            }
+
+            return patients;
         }
     }
 }

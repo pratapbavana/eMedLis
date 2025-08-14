@@ -204,6 +204,7 @@
     <Compile Include="Models\ManageViewModels.cs" />
     <Compile Include="Models\PatientBilling\BillDetail.cs" />
     <Compile Include="Models\PatientBilling\BillSummary.cs" />
+    <Compile Include="Models\PatientBilling\CompleteBillData.cs" />
     <Compile Include="Models\PatientBilling\PatientBillViewModel.cs" />
     <Compile Include="Models\PatientBilling\PatientInfo.cs" />
     <Compile Include="Models\PatientBilling\PaymentDetail.cs" />

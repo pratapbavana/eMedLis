@@ -14,6 +14,13 @@ namespace eMedLis
             routes.IgnoreRoute("{resource}.axd/{*pathInfo}");
 
             routes.MapRoute(
+            name: "PrintBill",
+            url: "PatientBilling/PrintBill/{billId}",
+            defaults: new { controller = "PatientBilling", action = "PrintBill" },
+            constraints: new { billId = @"\d+" }
+        );
+
+            routes.MapRoute(
                 name: "Default",
                 url: "{controller}/{action}/{id}",
                 defaults: new { controller = "Home", action = "Index", id = UrlParameter.Optional }
