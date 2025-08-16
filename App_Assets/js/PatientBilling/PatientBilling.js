@@ -1,4 +1,5 @@
-﻿$(document).ready(function () {
+﻿// #region Document Ready Functions
+$(document).ready(function () {
     var i = $("#invtable").DataTable(
         {
             "paging": false,
@@ -52,7 +53,7 @@
         loaddatatable();
     });
 })
-
+// #endregion
 function ToggleForm() {
     $("#PatList").show();
     $("#Billing").hide();
@@ -162,6 +163,7 @@ function SaveBill() {
                 clearfields(); // Clear the form on successful save
                 $("#invtable").DataTable().clear().draw();
                 $("#paymentGrid").DataTable().clear().draw();
+                refreshBillsGrid();
                 // You can add logic here to redirect, print the bill, etc.
                 setTimeout(function () {
                     showPrintPreview(billId);
@@ -180,7 +182,6 @@ function SaveBill() {
     return false; // Prevent default form submission (important for buttons inside a form)
 }
 // #endregion
-
 
 // #region Clear Form Fields
 function clearfields() {
@@ -217,6 +218,20 @@ function clearfields() {
     $('#lblDiscountAmount').text('0.00');
     $('#lblPaidAmount').text('0.00');
     $('#lblDueAmount').text('0.00');
+}
+function clearPatientForm(includeMobile = true) {
+    if (includeMobile) {
+        $('#MobileNo').val('');
+    }
+    $('#PatName').val('');
+    $('#Age').val('');
+    $('#AgeType').val('Years');
+    $('#Gender').val('');
+    $('#Ref').val('');
+    $('#Area').val('');
+    $('#City').val('');
+    $('#Email').val('');
+    $('#hiddenPatientId').val('');
 }
 // #endregion
 
@@ -314,14 +329,12 @@ function loaddatatable() {
     //    });
     //}).draw();
 }
-//#endregion
-
-// #region Add inv to List
-
 function refreshBillsGrid() {
     $('#recentBillsTable').DataTable().ajax.reload(null, false);
 }
+//#endregion
 
+// #region Add inv to List
 function addinvtolist(Id) {
     if (!Id) {
         return;
@@ -333,11 +346,14 @@ function addinvtolist(Id) {
         dataType: "json",
         success: function (result) {
             var i = $("#invtable").DataTable()
-            var idx = i
-                .columns(0)
-                .data()
-                .eq(0) // Reduce the 2D array into a 1D array of data
-                .indexOf(result[0].InvCode);
+            var idx = -1; // Default to not found
+            i.rows().every(function () {
+                var rowData = this.data();
+                if (parseInt(rowData[0]) === parseInt(Id)) {
+                    idx = 0; // Found duplicate
+                    return false; // Break the loop
+                }
+            });
 
             if (idx === -1) {
                 var SelectedInvId = Id
@@ -482,6 +498,7 @@ $(document).ready(function () {
 });
 // #endregion
 
+// #region Discount Calculation
 $(document).ready(function () {
     var isUpdatingPercent = false;
     var isUpdatingAmount = false;
@@ -546,8 +563,9 @@ $(document).ready(function () {
         calculateAndSetSummaryAmounts();
     });
 });
+// #endregion
 
-// New function to encapsulate calculation of summary amounts
+// #region Summary Amounts Calculation
 // New function to encapsulate calculation of summary amounts
 function calculateAndSetSummaryAmounts() {
     var i = $("#invtable").DataTable();
@@ -577,6 +595,42 @@ function calculateAndSetSummaryAmounts() {
     // After updating NetAmount, recalculate Due Amount as well
     updatePaymentSummary(); // // Call this to update paid/due based on new net total
 }
+// #endregion
+
+// #region Update Summary Based on Payment Grid
+// New function to encapsulate calculation of payment summary amounts
+function updatePaymentSummary() {
+    var j = $("#paymentGrid").DataTable();
+    var totalPaidAmount = 0;
+
+    // Iterate over each row in the paymentGrid DataTable
+    j.rows().every(function () {
+        var data = this.data();
+        totalPaidAmount += parseFloat(data[1]); // Amount is in the 2nd column (index 1)
+    });
+
+    var netAmount = parseFloat($('#lblNetAmount').text()) || 0;
+    var dueAmount = netAmount - totalPaidAmount;
+
+    // NEW LOGIC: If due amount becomes negative, clear the payment grid
+    if (dueAmount < 0) {
+        toastr.info("Due amount cannot be negative. Payment details have been reset.");
+        j.clear().draw(); // Clear all rows from the payment grid
+        totalPaidAmount = 0; // Reset total paid amount since grid is cleared
+        dueAmount = netAmount; // Due amount becomes net amount again
+    }
+
+    $('#lblPaidAmount').text(totalPaidAmount.toFixed(2));
+    $('#lblDueAmount').text(dueAmount.toFixed(2));
+
+    // Also clear payment input fields if the grid was reset
+    if (dueAmount < 0) { // This condition will be true if the grid was just cleared
+        $("#pamount").val("");
+        $("#paymentMode").val("");
+        $("#refno").val("");
+    }
+}
+// #endregion
 
 // #region Pay Mode to List
 $(document).ready(function () {
@@ -618,41 +672,6 @@ $(document).ready(function () {
         }
     });
 });
-//#endregion
-
-// New function to encapsulate calculation of payment summary amounts
-function updatePaymentSummary() {
-    var j = $("#paymentGrid").DataTable();
-    var totalPaidAmount = 0;
-
-    // Iterate over each row in the paymentGrid DataTable
-    j.rows().every(function () {
-        var data = this.data();
-        totalPaidAmount += parseFloat(data[1]); // Amount is in the 2nd column (index 1)
-    });
-
-    var netAmount = parseFloat($('#lblNetAmount').text()) || 0;
-    var dueAmount = netAmount - totalPaidAmount;
-
-    // NEW LOGIC: If due amount becomes negative, clear the payment grid
-    if (dueAmount < 0) {
-        toastr.info("Due amount cannot be negative. Payment details have been reset.");
-        j.clear().draw(); // Clear all rows from the payment grid
-        totalPaidAmount = 0; // Reset total paid amount since grid is cleared
-        dueAmount = netAmount; // Due amount becomes net amount again
-    }
-
-    $('#lblPaidAmount').text(totalPaidAmount.toFixed(2));
-    $('#lblDueAmount').text(dueAmount.toFixed(2));
-
-    // Also clear payment input fields if the grid was reset
-    if (dueAmount < 0) { // This condition will be true if the grid was just cleared
-        $("#pamount").val("");
-        $("#paymentMode").val("");
-        $("#refno").val("");
-    }
-}
-
 
 $(document).ready(function () {
     $('#paymentMode').on('change', function () {
@@ -664,28 +683,15 @@ $(document).ready(function () {
         }
     });
 });
+//#endregion
+
+// #region Search Based on Mobile Number and UHID
 
 $(document).ready(function () {
-    let searchTimeout;
-
-    // Enhanced input handler with debouncing
     $('#MobileNo').on('input', function () {
         var searchValue = $(this).val().trim();
-
-        // Clear previous timeout
-        //if (searchTimeout) {
-        //    clearTimeout(searchTimeout);
-        //}
-
-        // Add visual feedback
         updateSearchInputState(searchValue);
 
-        // Debounce search (wait 1000ms after user stops typing)
-        //if (searchValue.length >= 4) {
-        //    searchTimeout = setTimeout(function () {
-        //        searchPatients(searchValue);
-        //    }, 1000);
-        //}
     });
 
     // Manual search button - immediate search
@@ -793,7 +799,9 @@ function searchPatients(searchValue) {
         }
     });
 }
+// #endregion
 
+// #region Patient Search Model
 function populatePatientSearchModal(patients, searchType, searchValue) {
     var tbody = $('#patientSearchTable tbody');
     tbody.empty();
@@ -828,7 +836,9 @@ function populatePatientSearchModal(patients, searchType, searchValue) {
         resetSearchInputState();
     });
 }
+// #endregion
 
+// #region Fill Patient Form from Model Search List
 function fillPatientForm(patient) {
     $('#MobileNo').val(patient.mobileNo);
     $('#PatName').val(patient.patName);
@@ -852,21 +862,9 @@ function fillPatientForm(patient) {
     // Store patient ID for potential updates
     $('#hiddenPatientId').val(patient.patientInfoId);
 }
-function clearPatientForm(includeMobile = true) {
-    if (includeMobile) {
-        $('#MobileNo').val('');
-    }
-    $('#PatName').val('');
-    $('#Age').val('');
-    $('#AgeType').val('Years');
-    $('#Gender').val('');
-    $('#Ref').val('');
-    $('#Area').val('');
-    $('#City').val('');
-    $('#Email').val('');
-    $('#hiddenPatientId').val('');
-}
+// #endregion
 
+// #region Print Bill, PDF and Email Related
 function showPrintPreview(billId) {
     currentBillId = billId;
     $('#printPreviewModal').modal('show');
@@ -1077,8 +1075,9 @@ $('#printPreviewModal').on('hidden.bs.modal', function () {
         </div>
     `);
 });
+// #endregion
 
-// Action Functions
+// #region Action Functions View, Print, Cancel
 function printBill(billId) {
     showPrintPreview(billId);
 }
@@ -1240,4 +1239,4 @@ function printBillFromView() {
         $('#viewBillModal').modal('hide');
     }
 }
-
+// #endregion

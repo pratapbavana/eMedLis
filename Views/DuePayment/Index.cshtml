@@ -1,0 +1,273 @@
+﻿@{
+    ViewBag.Title = "Due Payment Collection";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fa fa-credit-card"></i> Due Payment Collection
+                    </h3>
+                    <div class="card-tools">
+                        <button class="btn btn-sm btn-info" onclick="refreshDueBills()">
+                            <i class="fa fa-refresh"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Filter -->
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label>Days Filter:</label>
+                            <select class="form-control form-control-sm" id="daysFilter">
+                                <option value="7">Last 7 Days</option>
+                                <option value="30" selected>Last 30 Days</option>
+                                <option value="90">Last 3 Months</option>
+                                <option value="365">Last Year</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Due Bills Table -->
+                    <table class="table table-striped table-hover" id="dueBillsTable">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th>Bill Date</th>
+                                <th>Bill No</th>
+                                <th>Patient Name</th>
+                                <th>Age/Gender</th>
+                                <th>Mobile</th>
+                                <th>Net Amount</th>
+                                <th>Paid</th>
+                                <th>Due Amount</th>
+                                <th>Days Pending</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Collection Modal -->
+<div class="modal fade" id="paymentModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fa fa-credit-card"></i> Collect Payment
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Bill Info -->
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="alert alert-info">
+                            <strong>Bill No:</strong> <span id="modalBillNo"></span> |
+                            <strong>Patient:</strong> <span id="modalPatientName"></span> |
+                            <strong>Due Amount:</strong> ₹<span id="modalDueAmount"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <form id="paymentForm">
+                    <input type="hidden" id="billSummaryId">
+                    <input type="hidden" id="maxDueAmount">
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Payment Amount <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="paymentAmount"
+                                       min="0.01" step="0.01" required>
+                                <small class="form-text text-muted">
+                                    Maximum: ₹<span id="maxAmountDisplay"></span>
+                                </small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Payment Mode <span class="text-danger">*</span></label>
+                                <select class="form-control" id="paymentMode" required>
+                                    <option value="">Select Mode</option>
+                                    <option value="Cash">Cash</option>
+                                    <option value="UPI">UPI</option>
+                                    <option value="Card">Card</option>
+                                    <option value="Cheque">Cheque</option>
+                                    <option value="NEFT">NEFT</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Reference No</label>
+                        <input type="text" class="form-control" id="refNo"
+                               placeholder="Transaction/Cheque/Reference number">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Remarks</label>
+                        <textarea class="form-control" id="remarks" rows="2"
+                                  placeholder="Any additional notes..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" onclick="processPayment()">
+                    <i class="fa fa-check"></i> Process Payment
+                </button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="~/Scripts/jquery-3.7.1.min.js"></script>
+<script src="~/Scripts/bootstrap.min.js"></script>
+<script src="~/Scripts/toastr.min.js"></script>
+<script>
+$(document).ready(function() {
+    loadDueBillsTable();
+
+    $('#daysFilter').change(function() {
+        loadDueBillsTable();
+    });
+
+    // Payment mode change handler
+    $('#paymentMode').change(function() {
+        var mode = $(this).val();
+        if (mode === 'Cash') {
+            $('#refNo').prop('disabled', true).val('');
+        } else {
+            $('#refNo').prop('disabled', false);
+        }
+    });
+});
+
+function loadDueBillsTable() {
+    if ($.fn.DataTable.isDataTable('#dueBillsTable')) {
+        $('#dueBillsTable').DataTable().destroy();
+    }
+
+    $('#dueBillsTable').DataTable({
+        ajax: {
+            url: '/DuePayment/GetDueBills',
+            data: { days: $('#daysFilter').val() || 30 },
+            dataSrc: ''
+        },
+        order: [[8, 'desc']], // Sort by days pending
+        columns: [
+            { data: 'BillDate' },
+            { data: 'BillNo' },
+            { data: 'PatName' },
+            { data: 'AgeGender' },
+            { data: 'MobileNo' },
+            { data: 'NetAmount', className: 'text-right' },
+            { data: 'PaidAmount', className: 'text-right' },
+            {
+                data: 'DueAmount',
+                className: 'text-right',
+                render: function(data) {
+                    return '<span class="text-danger font-weight-bold">₹' + data + '</span>';
+                }
+            },
+            {
+                data: 'DaysPending',
+                render: function(data) {
+                    var badgeClass = data > 30 ? 'badge-danger' : data > 7 ? 'badge-warning' : 'badge-info';
+                    return '<span class="badge ' + badgeClass + '">' + data + ' days</span>';
+                }
+            },
+            {
+                data: null,
+                orderable: false,
+                render: function(data, type, row) {
+                    return '<button class="btn btn-success btn-sm" onclick="collectPayment(' +
+                           row.BillSummaryId + ', \'' + row.BillNo + '\', \'' + row.PatName +
+                           '\', ' + row.DueAmount + ')"><i class="fa fa-credit-card"></i> Collect</button>';
+                }
+            }
+        ]
+    });
+}
+
+function collectPayment(billSummaryId, billNo, patientName, dueAmount) {
+    $('#billSummaryId').val(billSummaryId);
+    $('#maxDueAmount').val(dueAmount);
+    $('#modalBillNo').text(billNo);
+    $('#modalPatientName').text(patientName);
+    $('#modalDueAmount').text(parseFloat(dueAmount).toFixed(2));
+    $('#maxAmountDisplay').text(parseFloat(dueAmount).toFixed(2));
+
+    // Reset form
+    $('#paymentForm')[0].reset();
+    $('#paymentAmount').attr('max', dueAmount);
+
+    $('#paymentModal').modal('show');
+}
+
+function processPayment() {
+    var amount = parseFloat($('#paymentAmount').val());
+    var maxDue = parseFloat($('#maxDueAmount').val());
+
+    if (!amount || amount <= 0) {
+        toastr.error('Please enter a valid payment amount');
+        return;
+    }
+
+    if (amount > maxDue) {
+        toastr.error('Payment amount cannot exceed due amount');
+        return;
+    }
+
+    if (!$('#paymentMode').val()) {
+        toastr.error('Please select payment mode');
+        return;
+    }
+
+    var paymentData = {
+        BillSummaryId: $('#billSummaryId').val(),
+        Amount: amount,
+        PaymentMode: $('#paymentMode').val(),
+        RefNo: $('#refNo').val(),
+        Remarks: $('#remarks').val()
+    };
+
+    $.ajax({
+        url: '/DuePayment/ProcessPayment',
+        type: 'POST',
+        data: paymentData,
+        success: function(response) {
+            if (response.success) {
+                toastr.success(response.message);
+                $('#paymentModal').modal('hide');
+                loadDueBillsTable(); // Refresh table
+
+                // Open receipt in new window
+                setTimeout(function() {
+                    window.open('/DuePayment/PrintReceipt/' + response.duePaymentId, '_blank');
+                }, 1000);
+            } else {
+                toastr.error(response.message);
+            }
+        },
+        error: function() {
+            toastr.error('Error processing payment');
+        }
+    });
+}
+
+function refreshDueBills() {
+    loadDueBillsTable();
+}
+</script>

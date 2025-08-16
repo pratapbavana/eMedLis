@@ -338,7 +338,7 @@ namespace eMedLis.Controllers
                 <tr>
                     <td>{i + 1}</td>
                     <td>RCPT {displayBillNo}{i:00}</td>
-                    <td>{billData.BillSummary.BillDate:dd/MM/yyyy}</td>
+                    <td>{payment.PaymentDate:dd/MM/yyyy}</td>
                     <td class='number'>{payment.Amount:F2}</td>
                     <td>{payment.PaymentMode}</td>
                 </tr>");
@@ -570,14 +570,14 @@ namespace eMedLis.Controllers
         }
 
         [HttpGet]
-        public JsonResult GetRecentBillsList(int days = 30)
+        public JsonResult GetRecentBillsList(int days = 30, string status = "")
         {
             try
             {
                 var db = new PatientBillingDB();
+                var bills = db.GetRecentBills(days, status);
                 // Reuse DAL but ignore paging parameters
-                var response = db.GetRecentBills(days, pageSize: int.MaxValue, pageNumber: 1);
-                var bills = response.Bills.Select(b => new {
+                var result = bills.Select(b => new {
                     b.BillSummaryId,
                     b.BillNo,
                     BillDate = b.BillDate.ToString("dd/MM/yyyy HH:mm"),
@@ -590,7 +590,7 @@ namespace eMedLis.Controllers
                     PaymentStatus = b.PaymentStatus,
                     StatusClass = b.PaymentStatusClass
                 });
-                return Json(bills, JsonRequestBehavior.AllowGet);
+                return Json(result, JsonRequestBehavior.AllowGet);
             }
             catch (Exception ex)
             {

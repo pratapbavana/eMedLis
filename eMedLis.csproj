@@ -183,6 +183,7 @@
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Controllers\AccountController.cs" />
     <Compile Include="Controllers\DepartmentController.cs" />
+    <Compile Include="Controllers\DuePaymentController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\InvestigationController.cs" />
     <Compile Include="Controllers\LookupController.cs" />
@@ -208,9 +209,12 @@
     <Compile Include="Models\PatientBilling\BillSaveResult.cs" />
     <Compile Include="Models\PatientBilling\BillSummary.cs" />
     <Compile Include="Models\PatientBilling\CompleteBillData.cs" />
+    <Compile Include="Models\PatientBilling\DueBillItem.cs" />
+    <Compile Include="Models\PatientBilling\DuePayment.cs" />
     <Compile Include="Models\PatientBilling\PatientBillViewModel.cs" />
     <Compile Include="Models\PatientBilling\PatientInfo.cs" />
     <Compile Include="Models\PatientBilling\PaymentDetail.cs" />
+    <Compile Include="Models\PatientBilling\PaymentReceiptData.cs" />
     <Compile Include="Models\SubDepartment.cs" />
     <Compile Include="Models\SubDepartmentDB.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -518,6 +522,7 @@
     <Content Include="Views\Lookup\Specimen.cshtml" />
     <Content Include="Views\Lookup\Vacutainer.cshtml" />
     <Content Include="Views\PatientBilling\Index.cshtml" />
+    <Content Include="Views\DuePayment\Index.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

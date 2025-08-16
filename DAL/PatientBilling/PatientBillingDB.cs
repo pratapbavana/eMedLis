@@ -45,7 +45,6 @@ namespace eMedLis.DAL.PatientBilling
             }
             return patientInfoId;
         }
-
         private int SaveBillSummary(BillSummary summary, int patientInfoId, SqlConnection connection, SqlTransaction transaction)
         {
             int billSummaryId = 0;
@@ -86,7 +85,6 @@ namespace eMedLis.DAL.PatientBilling
 
             return billSummaryId;
         }
-
         private void SaveBillDetail(BillDetail detail, int billSummaryId, SqlConnection connection, SqlTransaction transaction)
         {
             using (SqlCommand cmd = new SqlCommand("usp_InsertBillDetail", connection, transaction))
@@ -102,7 +100,6 @@ namespace eMedLis.DAL.PatientBilling
                 cmd.ExecuteNonQuery();
             }
         }
-
         private void SavePaymentDetail(PaymentDetail payment, int billSummaryId, SqlConnection connection, SqlTransaction transaction)
         {
             using (SqlCommand cmd = new SqlCommand("usp_InsertPaymentDetail", connection, transaction))
@@ -112,6 +109,8 @@ namespace eMedLis.DAL.PatientBilling
                 cmd.Parameters.AddWithValue("@PaymentMode", payment.PaymentMode);
                 cmd.Parameters.AddWithValue("@Amount", payment.Amount);
                 cmd.Parameters.AddWithValue("@RefNo", payment.RefNo ?? (object)DBNull.Value); // Handle nullable
+                cmd.Parameters.AddWithValue("@IsDuePayment", payment.IsDuePayment);
+                cmd.ExecuteNonQuery();
                 cmd.ExecuteNonQuery();
             }
         }
@@ -176,7 +175,6 @@ namespace eMedLis.DAL.PatientBilling
                 Success = true
             };
         }
-
         public CompleteBillData GetCompleteBillForPrint(int billSummaryId)
         {
             var result = new CompleteBillData();
@@ -283,7 +281,8 @@ namespace eMedLis.DAL.PatientBilling
                                     {
                                         PaymentMode = reader["PaymentMode"].ToString(),
                                         Amount = Convert.ToDecimal(reader["Amount"]),
-                                        RefNo = reader["RefNo"]?.ToString()
+                                        RefNo = reader["RefNo"]?.ToString(),
+                                        PaymentDate = Convert.ToDateTime(reader["PaymentDate"]),
                                     });
                                 }
                             }
@@ -303,7 +302,6 @@ namespace eMedLis.DAL.PatientBilling
         {
             return SearchPatientsUniversal(mobileNo);
         }
-
         public List<PatientInfo> SearchPatientsUniversal(string searchValue)
         {
             var patients = new List<PatientInfo>();
@@ -342,7 +340,6 @@ namespace eMedLis.DAL.PatientBilling
 
             return patients;
         }
-
         public CompleteBillData GetBillByBillNo(string billNo)
         {
             using (SqlConnection connection = new SqlConnection(_connectionString))
@@ -365,14 +362,9 @@ namespace eMedLis.DAL.PatientBilling
             }
             return null;
         }
-
-        public BillListResponse GetRecentBills(int days = 30, int pageSize = 50, int pageNumber = 1)
+        public List<BillListItem> GetRecentBills(int days = 30, string status = "")
         {
-            var result = new BillListResponse
-            {
-                PageNumber = pageNumber,
-                PageSize = pageSize
-            };
+            var bills = new List<BillListItem>();
 
             using (SqlConnection connection = new SqlConnection(_connectionString))
             {
@@ -380,8 +372,9 @@ namespace eMedLis.DAL.PatientBilling
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
                     cmd.Parameters.AddWithValue("@Days", days);
-                    cmd.Parameters.AddWithValue("@PageSize", pageSize);
-                    cmd.Parameters.AddWithValue("@PageNumber", pageNumber);
+                    cmd.Parameters.AddWithValue("@Status", string.IsNullOrEmpty(status)
+                        ? (object)DBNull.Value
+                        : status);
 
                     connection.Open();
                     using (SqlDataReader reader = cmd.ExecuteReader())
@@ -389,7 +382,7 @@ namespace eMedLis.DAL.PatientBilling
                         // First result set - Bills
                         while (reader.Read())
                         {
-                            result.Bills.Add(new BillListItem
+                            bills.Add(new BillListItem
                             {
                                 BillSummaryId = (int)reader["BillSummaryId"],
                                 BillNo = reader["BillNo"]?.ToString(),
@@ -408,19 +401,12 @@ namespace eMedLis.DAL.PatientBilling
                                 PaymentStatus = reader["PaymentStatus"].ToString()
                             });
                         }
-
-                        // Second result set - Total count
-                        if (reader.NextResult() && reader.Read())
-                        {
-                            result.TotalRecords = Convert.ToInt32(reader["TotalRecords"]);
-                        }
                     }
                 }
             }
 
-            return result;
+            return bills;
         }
-
         public bool CancelBill(int billSummaryId, string cancelReason, string cancelledBy)
         {
             using (SqlConnection connection = new SqlConnection(_connectionString))
@@ -437,6 +423,133 @@ namespace eMedLis.DAL.PatientBilling
                     return rowsAffected > 0;
                 }
             }
+        }
+        public List<DueBillItem> GetDueBills(int days = 30)
+        {
+            var bills = new List<DueBillItem>();
+
+            using (var conn = new SqlConnection(_connectionString))
+            using (var cmd = new SqlCommand("usp_GetDueBills", conn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@Days", days);
+
+                conn.Open();
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        bills.Add(new DueBillItem
+                        {
+                            BillSummaryId = (int)reader["BillSummaryId"],
+                            BillNo = reader["BillNo"].ToString(),
+                            BillDate = Convert.ToDateTime(reader["BillDate"]),
+                            NetAmount = Convert.ToDecimal(reader["NetAmount"]),
+                            PaidAmount = Convert.ToDecimal(reader["PaidAmount"]),
+                            DueAmount = Convert.ToDecimal(reader["DueAmount"]),
+                            PatName = reader["PatName"].ToString(),
+                            MobileNo = reader["MobileNo"].ToString(),
+                            UHID = reader["UHID"]?.ToString(),
+                            Age = Convert.ToInt32(reader["Age"]),
+                            Gender = reader["Gender"]?.ToString(),
+                            DaysPending = Convert.ToInt32(reader["DaysPending"])
+                        });
+                    }
+                }
+            }
+
+            return bills;
+        }
+        public class DuePaymentResult
+        {
+            public int DuePaymentId { get; set; }
+            public string ReceiptNo { get; set; }
+            public bool Success { get; set; }
+            public string Message { get; set; }
+        }
+
+        public DuePaymentResult ProcessDuePayment(DuePayment payment)
+        {
+            var result = new DuePaymentResult();
+
+            using (var conn = new SqlConnection(_connectionString))
+            using (var cmd = new SqlCommand("usp_InsertDuePayment", conn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@BillSummaryId", payment.BillSummaryId);
+                cmd.Parameters.AddWithValue("@PaymentMode", payment.PaymentMode);
+                cmd.Parameters.AddWithValue("@Amount", payment.Amount);
+                cmd.Parameters.AddWithValue("@RefNo", (object)payment.RefNo ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ReceivedBy", payment.ReceivedBy ?? "System");
+                cmd.Parameters.AddWithValue("@Remarks", (object)payment.Remarks ?? DBNull.Value);
+
+                var idParam = new SqlParameter("@DuePaymentId", SqlDbType.Int)
+                { Direction = ParameterDirection.Output };
+                var rcptParam = new SqlParameter("@ReceiptNo", SqlDbType.VarChar, 20)
+                { Direction = ParameterDirection.Output };
+
+                cmd.Parameters.Add(idParam);
+                cmd.Parameters.Add(rcptParam);
+
+                conn.Open();
+                cmd.ExecuteNonQuery();
+
+                result.DuePaymentId = (int)idParam.Value;
+                result.ReceiptNo = rcptParam.Value.ToString();
+                result.Success = true;
+            }
+            return result;
+        }
+        public PaymentReceiptData GetPaymentReceipt(int duePaymentId)
+        {
+            PaymentReceiptData receiptData = null;
+
+            using (var conn = new SqlConnection(_connectionString))
+            using (var cmd = new SqlCommand("usp_GetPaymentReceipt", conn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@DuePaymentId", duePaymentId);
+
+                conn.Open();
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        receiptData = new PaymentReceiptData
+                        {
+                            Payment = new DuePayment
+                            {
+                                DuePaymentId = (int)reader["DuePaymentId"],
+                                ReceiptNo = reader["ReceiptNo"].ToString(),
+                                PaymentDate = Convert.ToDateTime(reader["PaymentDate"]),
+                                PaymentMode = reader["PaymentMode"].ToString(),
+                                Amount = Convert.ToDecimal(reader["Amount"]),
+                                RefNo = reader["RefNo"]?.ToString(),
+                                ReceivedBy = reader["ReceivedBy"]?.ToString(),
+                                Remarks = reader["Remarks"]?.ToString()
+                            },
+                            Bill = new BillSummary
+                            {
+                                BillSummaryId = (int)reader["BillSummaryId"],
+                                BillNo = reader["BillNo"].ToString(),
+                                NetAmount = Convert.ToDecimal(reader["BillAmount"]),
+                                PaidAmount = Convert.ToDecimal(reader["TotalPaid"]),
+                                DueAmount = Convert.ToDecimal(reader["RemainingDue"])
+                            },
+                            Patient = new PatientInfo
+                            {
+                                PatName = reader["PatName"].ToString(),
+                                MobileNo = reader["MobileNo"].ToString(),
+                                UHID = reader["UHID"]?.ToString(),
+                                Age = Convert.ToInt32(reader["Age"]),
+                                Gender = reader["Gender"]?.ToString()
+                            }
+                        };
+                    }
+                }
+            }
+
+            return receiptData;
         }
     }
 }
