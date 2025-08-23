@@ -100,6 +100,41 @@ namespace eMedLis.DAL.PatientBilling
                 cmd.ExecuteNonQuery();
             }
         }
+        private void SaveInitialPayments(int billSummaryId,
+                                 List<PaymentDetail> payments,
+                                 SqlConnection conn,
+                                 SqlTransaction tx)
+        {
+            // 1. Generate receipt number for initial payment
+            string receiptNo;
+            using (var cmd = new SqlCommand("usp_GenerateReceiptNo", conn, tx))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@Prefix", "RCP");
+                var outParam = new SqlParameter("@ReceiptNo", SqlDbType.VarChar, 20)
+                { Direction = ParameterDirection.Output };
+                cmd.Parameters.Add(outParam);
+                cmd.ExecuteNonQuery();
+                receiptNo = outParam.Value.ToString();
+            }
+
+            // 2. Insert each PaymentDetail with same receipt
+            foreach (var p in payments)
+            {
+                using (var cmd = new SqlCommand("usp_InsertPaymentDetail", conn, tx))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@BillSummaryId", billSummaryId);
+                    cmd.Parameters.AddWithValue("@PaymentMode", p.PaymentMode);
+                    cmd.Parameters.AddWithValue("@Amount", p.Amount);
+                    cmd.Parameters.AddWithValue("@RefNo", (object)p.RefNo ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@IsDuePayment", 0);
+                    cmd.Parameters.AddWithValue("@ReceiptNo", receiptNo);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
         private void SavePaymentDetail(PaymentDetail payment, int billSummaryId, SqlConnection connection, SqlTransaction transaction)
         {
             using (SqlCommand cmd = new SqlCommand("usp_InsertPaymentDetail", connection, transaction))
@@ -154,10 +189,7 @@ namespace eMedLis.DAL.PatientBilling
                     }
 
                     // 4. Save Payment Details
-                    foreach (var payment in billData.PaymentDetails)
-                    {
-                        SavePaymentDetail(payment, billSummaryId, connection, transaction);
-                    }
+                    SaveInitialPayments(billSummaryId, billData.PaymentDetails, connection, transaction);
 
                     transaction.Commit();
                 }
@@ -282,6 +314,7 @@ namespace eMedLis.DAL.PatientBilling
                                         PaymentMode = reader["PaymentMode"].ToString(),
                                         Amount = Convert.ToDecimal(reader["Amount"]),
                                         RefNo = reader["RefNo"]?.ToString(),
+                                        ReceiptNo = reader["ReceiptNo"]?.ToString(),
                                         PaymentDate = Convert.ToDateTime(reader["PaymentDate"]),
                                     });
                                 }

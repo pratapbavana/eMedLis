@@ -52,6 +52,21 @@ $(document).ready(function () {
     $('#daysFilter, #statusFilter').change(function () {
         loaddatatable();
     });
+
+    $('#printPreviewModal').on('shown.bs.modal', function () {
+        // Ensure modal content is properly sized
+        $('#printPreviewContent .bill-container').css({
+            'transform': 'scale(1)',
+            'transform-origin': 'center top'
+        });
+    });
+
+        $(window).resize(function () {
+            if ($('#printPreviewModal').hasClass('show')) {
+                // Recalculate modal content size if needed
+                $('#printPreviewContent .bill-container').css('max-width', '650px');
+            }
+        });
 })
 // #endregion
 function ToggleForm() {
@@ -1103,7 +1118,7 @@ function viewBill(billId) {
 }
 
 function populateViewBillModal(billData) {
-    $('#viewBillNo').text(billData.billNo);
+    $('#viewBillNo').text(billData.billNo + ' / ' + billData.BillDate);
 
     var content = `
         <div class="row">
@@ -1169,7 +1184,8 @@ function populateViewBillModal(billData) {
                         <tr>
                             <th>Payment Mode</th>
                             <th>Amount</th>
-                            <th>Reference No</th>
+                            <th>Receipt No</th>
+                            <th>Payment Date</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1181,6 +1197,7 @@ function populateViewBillModal(billData) {
                 <td>${payment.mode}</td>
                 <td>₹${payment.amount}</td>
                 <td>${payment.refNo || '-'}</td>
+                <td>${payment.paymentDate || '-'}</td>
             </tr>
         `;
     });

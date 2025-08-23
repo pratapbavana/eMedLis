@@ -26,5 +26,6 @@ namespace eMedLis.Models.PatientBilling
         public string RefNo { get; set; } // Reference number for non-cash payments
         public bool IsDuePayment { get; set; }
         public DateTime PaymentDate { get; set; }
+        public string ReceiptNo { get; set; }
     }
 }

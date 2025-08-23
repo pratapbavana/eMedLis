@@ -1,9 +1,13 @@
 ﻿using eMedLis.DAL.PatientBilling;     // For PatientBillingDB
 using eMedLis.Models.PatientBilling; // For PatientBillViewModel
 using System;
+using System.Drawing.Imaging;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Web.Mvc;
+using ZXing;
+using ZXing.Common;
 
 namespace eMedLis.Controllers
 {
@@ -80,29 +84,9 @@ namespace eMedLis.Controllers
         {
             var html = new StringBuilder();
             string displayBillNo = billData.BillSummary.BillNo ?? billId.ToString();
-
-            // Different styling based on output format
-            string bodyOnLoad = "";
-            string additionalStyles = "";
-
-            if (!forModal && !forPDF)
-            {
-                bodyOnLoad = "onload='window.print();'";
-            }
-
-            if (forModal)
-            {
-                additionalStyles = @"
-        .bill-container { 
-            width: 100%; 
-            max-width: 400px; 
-            margin: 0 auto; 
-        }
-        body { 
-            margin: 10px; 
-            background: #fff; 
-        }";
-            }
+            string uhid = billData.PatientInfo.UHID ?? "NEW";
+            string barcodeBase64 = GenerateBarcode(uhid);
+            string bodyOnLoad = (!forModal && !forPDF) ? "onload='window.print();'" : "";
 
             html.Append($@"
 <!DOCTYPE html>
@@ -110,261 +94,258 @@ namespace eMedLis.Controllers
 <head>
     <meta charset='UTF-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <title>Bill - {displayBillNo}</title>
+    <title>Diagnostic Bill cum Receipt - {displayBillNo}</title>
     <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ 
-            font-family: Arial, sans-serif; 
-            font-size: 12px; 
-            line-height: 1.4;
-            color: #000;
-            background: #fff;
-        }}
-        .bill-container {{ 
-            width: 80mm; 
-            margin: 0 auto; 
-            padding: 10px;
-        }}
-        .header {{ 
-            text-align: center; 
-            border-bottom: 2px solid #000; 
-            padding-bottom: 10px; 
-            margin-bottom: 15px;
-        }}
-        .header h1 {{ 
-            font-size: 16px; 
-            font-weight: bold; 
-            margin-bottom: 5px;
-        }}
-        .header p {{ 
-            font-size: 10px; 
-            margin: 2px 0;
-        }}
-        .bill-info {{ 
-            display: flex; 
-            justify-content: space-between; 
-            margin-bottom: 15px;
-        }}
-        .bill-info div {{ 
-            font-size: 11px;
-        }}
-        .patient-section {{ 
-            margin-bottom: 15px;
-        }}
-        .patient-row {{ 
-            display: flex; 
-            justify-content: space-between; 
-            margin-bottom: 3px;
-        }}
-        .investigations-table {{ 
-            width: 100%; 
-            border-collapse: collapse; 
-            margin-bottom: 15px;
-        }}
-        .investigations-table th, .investigations-table td {{ 
-            border: 1px solid #000; 
-            padding: 4px; 
-            text-align: left; 
-            font-size: 10px;
-        }}
-        .investigations-table th {{ 
-            background-color: #f0f0f0; 
-            font-weight: bold;
-        }}
-        .investigations-table td.number {{ 
-            text-align: right;
-        }}
-        .totals-section {{ 
-            margin-bottom: 15px;
-        }}
-        .total-row {{ 
-            display: flex; 
-            justify-content: space-between; 
-            margin-bottom: 2px; 
-            padding: 2px 0;
-        }}
-        .total-row.final {{ 
-            font-weight: bold; 
-            border-top: 1px solid #000; 
-            padding-top: 5px;
-        }}
-        .payment-section {{ 
-            margin-bottom: 15px;
-        }}
-        .payment-table {{ 
-            width: 100%; 
-            border-collapse: collapse;
-        }}
-        .payment-table th, .payment-table td {{ 
-            border: 1px solid #000; 
-            padding: 4px; 
-            text-align: left; 
-            font-size: 10px;
-        }}
-        .payment-table th {{ 
-            background-color: #f0f0f0;
-        }}
-        .footer {{ 
-            text-align: center; 
-            margin-top: 20px; 
-            border-top: 1px solid #000; 
-            padding-top: 10px;
-        }}
-        .barcode {{ 
-            text-align: center; 
-            font-family: 'Courier New', monospace; 
-            font-size: 14px; 
-            margin: 10px 0;
-        }}
-        {additionalStyles}
-        @media print {{
-            body {{ margin: 0; }}
-            .bill-container {{ width: 100%; }}
-            .no-print {{ display: none; }}
-        }}
+        * {{ margin:0; padding:0; box-sizing:border-box; }}
+        body {{ font-family:Arial,sans-serif; font-size:12px; line-height:1.2; margin:10px; background:#fff; }}
+        .bill-container {{ max-width:700px; margin:0 auto; padding:15px; border:2px solid #000; }}
+        .header {{ display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid #ccc; padding-bottom:8px; margin-bottom:12px; }}
+        .logo {{ width:60px; height:60px; background:#f0f0f0; border:1px solid #ccc; border-radius:50%; display:flex; align-items:center; justify-content:center; }}
+        .hospital-info {{ flex:1; margin:0 12px; }}
+        .hospital-name {{ font-size:16px; font-weight:bold; margin-bottom:3px; }}
+        .hospital-address {{ font-size:10px; margin-bottom:1px; }}
+        .header-right {{ text-align:right; min-width:160px; }}
+        .barcode-image {{ height:35px; margin-bottom:4px; }}
+        .bill-title {{ text-align:center; font-size:14px; font-weight:bold; text-decoration:underline; margin-bottom:14px; }}
+        .patient-info {{ display:flex; justify-content:space-between; margin-bottom:14px; }}
+        .info-col {{ width:48%; }}
+        .info-row {{ display:flex; margin-bottom:4px; font-size:11px; }}
+        .info-label {{ font-weight:bold; min-width:80px; }}
+        .investigations-section {{ margin-bottom:14px; }}
+        .section-header {{ display:flex; background:#666; color:#fff; padding:6px; font-size:12px; }}
+        .col-sno {{ width:50px; text-align:center; }}
+        .col-investigations {{ flex:1; padding-left:6px; }}
+        .col-amount {{ width:100px; text-align:center; }}
+        .investigations-table {{ width:100%; border-collapse:collapse; margin-top:4px; }}
+        .investigations-table td {{ border:1px solid #666; padding:4px 6px; font-size:11px; }}
+        .footer-section {{ display:flex; justify-content:space-between; margin-top:16px; }}
+        .footer-left {{ width:45%; font-size:11px; }}
+        .footer-right {{ width:45%; text-align:right; font-size:11px; }}
+        .total-row {{ display:flex; justify-content:space-between; margin-bottom:3px; }}
+        .total-label {{ font-weight:bold; }}
+        .amount-in-words {{ text-align:center; font-size:11px; font-weight:bold; margin:12px 0; }}
+        .signature-line {{ border-top:1px solid #000; text-align:center; padding-top:4px; font-size:10px; margin-top:20px; }}
+        @media print {{ body{{margin:0;}} .bill-container{{border:none;}} }}
     </style>
 </head>
 <body {bodyOnLoad}>
     <div class='bill-container'>
         <!-- Header -->
         <div class='header'>
-            <h1>eMedLis Pathology Software</h1>
-            <p>Plot No - 4, Ashoka Chowk, Opp Military General Hospital</p>
-            <p>Pune, 462023</p>
-            <p>Phone: 923456278, 939003261, 924058240</p>
-        </div>
-
-        <!-- Bill Info and Barcode -->
-        <div class='bill-info'>
-            <div><strong>Bill No:</strong> {displayBillNo}</div>
-            <div><strong>Date:</strong> {billData.BillSummary.BillDate:dd/MM/yyyy HH:mm}</div>
-        </div>
-        
-        <div class='barcode'>
-            ||||| |||| | || ||||<br>
-            {displayBillNo}
-        </div>
-
-        <!-- Patient Information -->
-        <div class='patient-section'>
-            <div class='patient-row'>
-                <span><strong>Name:</strong> {billData.PatientInfo.PatName}</span>
-                <span><strong>UHID:</strong> {billData.PatientInfo.UHID ?? "NEW"}</span>
+            <div class='logo'>🔬</div>
+            <div class='hospital-info'>
+                <div class='hospital-name'>Labsmart Pathology Software</div>
+                <div class='hospital-address'>Plot No - 4, Ashoka Chowk, Opp Military General Hospital, Pune, 462023</div>
+                <div class='hospital-address'>Phone no. 923456278, 939003261, 924058240</div>
             </div>
-            <div class='patient-row'>
-                <span><strong>Age/Sex:</strong> {billData.PatientInfo.Age} {billData.PatientInfo.AgeType}/{billData.PatientInfo.Gender}</span>
-                <span><strong>Referred by:</strong> {billData.PatientInfo.Ref ?? "Self"}</span>
-            </div>
-            <div class='patient-row'>
-                <span><strong>Mobile:</strong> {billData.PatientInfo.MobileNo}</span>
-                <span><strong>Received by:</strong> Admin</span>
-            </div>
-            <div class='patient-row'>
-                <span><strong>Address:</strong> {billData.PatientInfo.Area ?? ""}, {billData.PatientInfo.City ?? ""}</span>
+            <div class='header-right'>
+                <img src='{barcodeBase64}' class='barcode-image' alt='Barcode' /><br/>
             </div>
         </div>
 
-        <!-- Investigations Table -->
-        <table class='investigations-table'>
-            <thead>
-                <tr>
-                    <th>S.NO.</th>
-                    <th>INVESTIGATIONS</th>
-                    <th>AMOUNT</th>
-                </tr>
-            </thead>
-            <tbody>");
+        <!-- Title -->
+        <div class='bill-title'>DIAGNOSTIC BILL CUM RECEIPT</div>
 
-            // Add investigation rows
+        <!-- Patient Info -->
+        <div class='patient-info'>
+            <div class='info-col'>
+                <div class='info-row'><div class='info-label'>Name:</div><div>{billData.PatientInfo.PatName}</div></div>
+                <div class='info-row'><div class='info-label'>Age/Sex:</div><div>{billData.PatientInfo.Age} {billData.PatientInfo.AgeType}/{billData.PatientInfo.Gender}</div></div>
+                <div class='info-row'><div class='info-label'>Mobile:</div><div>{billData.PatientInfo.MobileNo}</div></div>
+                <div class='info-row'><div class='info-label'>Address:</div><div>{billData.PatientInfo.Area}, {billData.PatientInfo.City}</div></div>
+            </div>
+            <div class='info-col'>
+                <div class='info-row'><div class='info-label'>UHID:</div><div>{uhid}</div></div>
+                <div class='info-row'><div class='info-label'>Bill No:</div><div>{displayBillNo}</div></div>
+                <div class='info-row'><div class='info-label'>Referred by:</div><div>{billData.PatientInfo.Ref ?? "Self"}</div></div>
+                <div class='info-row'><div class='info-label'>Date/Time:</div><div>{billData.BillSummary.BillDate:dd/MM/yyyy HH:mm}</div></div>
+            </div>
+        </div>
+
+        <!-- Investigations -->
+        <div class='investigations-section'>
+            <div class='section-header'>
+                <div class='col-sno'>S. NO.</div>
+                <div class='col-investigations'>INVESTIGATIONS</div>
+                <div class='col-amount'>AMOUNT</div>
+            </div>
+            <table class='investigations-table'>
+                <tbody>");
             for (int i = 0; i < billData.BillDetails.Count; i++)
             {
-                var detail = billData.BillDetails[i];
+                var d = billData.BillDetails[i];
                 html.Append($@"
-                <tr>
-                    <td>{i + 1}</td>
-                    <td>{detail.InvName}</td>
-                    <td class='number'>Rs. {detail.NetAmount:F2}</td>
-                </tr>");
-            }
-
-            html.Append($@"
-            </tbody>
-        </table>
-
-        <!-- Totals Section -->
-        <div class='totals-section'>
-            <div class='total-row'>
-                <span>Bill Amount:</span>
-                <span>Rs. {billData.BillSummary.TotalBill:F2}</span>
-            </div>
-            <div class='total-row'>
-                <span>Discount Amount:</span>
-                <span>Rs. {billData.BillSummary.TotalDiscountAmount:F2}</span>
-            </div>
-            <div class='total-row final'>
-                <span>Final Bill Amount:</span>
-                <span>Rs. {billData.BillSummary.NetAmount:F2}</span>
-            </div>
-            <div class='total-row'>
-                <span>Paid Amount:</span>
-                <span>Rs. {billData.BillSummary.PaidAmount:F2}</span>
-            </div>
-            <div class='total-row'>
-                <span>Due Amount:</span>
-                <span>Rs. {billData.BillSummary.DueAmount:F2}</span>
-            </div>
-        </div>
-
-        <!-- Payment Details -->
-        <div class='payment-section'>
-            <h4>Payment Details</h4>
-            <table class='payment-table'>
-                <thead>
                     <tr>
-                        <th>SN</th>
-                        <th>Receipt No</th>
-                        <th>Date</th>
-                        <th>Amount (Rs)</th>
-                        <th>Paymode</th>
-                    </tr>
-                </thead>
-                <tbody>");
-
-            // Add payment rows
-            for (int i = 0; i < billData.PaymentDetails.Count; i++)
-            {
-                var payment = billData.PaymentDetails[i];
-                html.Append($@"
-                <tr>
-                    <td>{i + 1}</td>
-                    <td>RCPT {displayBillNo}{i:00}</td>
-                    <td>{payment.PaymentDate:dd/MM/yyyy}</td>
-                    <td class='number'>{payment.Amount:F2}</td>
-                    <td>{payment.PaymentMode}</td>
-                </tr>");
+                        <td class='col-sno'>{i + 1}.</td>
+                        <td class='col-investigations'>{d.InvName}</td>
+                        <td class='col-amount'>Rs. {d.NetAmount:F2}</td>
+                    </tr>");
             }
-
-            html.Append($@"
+            html.Append(@"
                 </tbody>
             </table>
-            <div style='text-align: center; margin-top: 10px;'>
-                <strong>Total: Rs. {billData.BillSummary.PaidAmount:F2}</strong>
+        </div>
+
+        <!-- Footer Section -->
+        <div class='footer-section'>
+            <div class='footer-left'>
+                <div style='font-weight:bold; margin-bottom:4px;'>Payments:</div>");
+            // Alternative compact payments display
+            if (billData.PaymentDetails != null && billData.PaymentDetails.Any())
+            {
+                for (int i = 0; i < billData.PaymentDetails.Count; i++)
+                {
+                    var p = billData.PaymentDetails[i];
+                    string rcpt = p.ReceiptNo;
+                    string dt = p.PaymentDate.ToString("dd/MM");
+                    html.Append($@"
+                <div style='font-size:10px; margin-bottom:2px; display:flex; justify-content:space-between;'>
+                    <span>{p.PaymentMode} - {rcpt}</span>
+                    <span>₹{p.Amount:F2} ({dt})</span>
+                </div>");
+                }
+                html.Append($@"
+                <div style='border-top:1px solid #ccc; padding-top:2px; margin-top:4px; font-weight:bold; font-size:10px; display:flex; justify-content:space-between;'>
+                    <span>Total Paid:</span>
+                    <span>₹{billData.BillSummary.PaidAmount:F2}</span>
+                </div>");
+            }
+            else
+            {
+                html.Append($@"
+                <div style='font-size:10px; margin-bottom:2px; display:flex; justify-content:space-between;'>
+                    <span>Cash</span>
+                    <span>₹{billData.BillSummary.PaidAmount:F2}</span>
+                </div>");
+            }
+            html.Append(@"
+                <div style='font-size:10px; margin-top:4px;'>User: Admin</div>
+                <div style='font-size:10px;'>Remarks: " + (billData.BillSummary.Remarks ?? "") + @"</div>
+            </div>
+            <div class='footer-right'>");
+            html.Append($@"
+                <div class='total-row'><span class='total-label'>Bill Amount:</span><span>₹{billData.BillSummary.TotalBill:F2}</span></div>
+                <div class='total-row'><span class='total-label'>Discount Amount:</span><span>₹{billData.BillSummary.TotalDiscountAmount:F2}</span></div>
+                <div class='total-row'><span class='total-label'>Final Bill Amount:</span><span>₹{billData.BillSummary.NetAmount:F2}</span></div>
+                <div class='total-row'><span class='total-label'>Paid Amount:</span><span>₹{billData.BillSummary.PaidAmount:F2}</span></div>
+                <div class='total-row'><span class='total-label'>Due Amount:</span><span>₹{billData.BillSummary.DueAmount:F2}</span></div>");
+            html.Append(@"
             </div>
         </div>
 
-        <!-- Footer -->
-        <div class='footer'>
-            <p><strong>Thank You for Visiting!</strong></p>
-            <div style='display: flex; justify-content: space-between; margin-top: 20px;'>
-                <div>Dr. Payal Shah<br><small>(MD, Pathologist)</small></div>
-                <div>Mr. Ketan Kumar<br><small>(Accountant)</small></div>
-            </div>
+        <div class='amount-in-words'>Received with Thanks: Rs. " + ConvertToWords(billData.BillSummary.PaidAmount) + @"</div>
+        <div class='signature-line'>Signature of Front Office: _____________________</div>
+        <div style='font-size:9px; text-align:right; margin-top:8px;'>
+            Printed by: Admin | Print Date: " + DateTime.Now.ToString("dd/MM/yyyy HH:mm") + @"
         </div>
     </div>
 </body>
 </html>");
 
             return html.ToString();
+        }
+
+        // Generate barcode using ZXing.Net
+        private string GenerateBarcode(string text)
+        {
+            try
+            {
+                var writer = new BarcodeWriter
+                {
+                    Format = BarcodeFormat.CODE_128,
+                    Options = new EncodingOptions
+                    {
+                        Width = 200,
+                        Height = 50,
+                        Margin = 2
+                    }
+                };
+
+                using (var bitmap = writer.Write(text))
+                {
+                    using (var stream = new MemoryStream())
+                    {
+                        bitmap.Save(stream, ImageFormat.Png);
+                        byte[] imageBytes = stream.ToArray();
+                        string base64String = Convert.ToBase64String(imageBytes);
+                        return "data:image/png;base64," + base64String;
+                    }
+                }
+            }
+            catch
+            {
+                // Return a simple text if barcode generation fails
+                return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+            }
+        }
+
+        // Convert number to words
+        private string ConvertToWords(decimal amount)
+        {
+            try
+            {
+                var integerPart = (long)amount;
+                var words = NumberToWords(integerPart);
+                return $"{words} Only";
+            }
+            catch
+            {
+                return $"Rupees {amount:F2} Only";
+            }
+        }
+
+        private string NumberToWords(long number)
+        {
+            if (number < 0) return "Minus " + NumberToWords(Math.Abs(number));
+            if (number == 0) return "Zero";
+
+            var ones = new[] { "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine" };
+            var teens = new[] { "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen" };
+            var tens = new[] { "", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety" };
+
+            string result = "";
+
+            if (number >= 10000000) // Crores
+            {
+                result += NumberToWords(number / 10000000) + " Crore ";
+                number %= 10000000;
+            }
+
+            if (number >= 100000) // Lakhs
+            {
+                result += NumberToWords(number / 100000) + " Lakh ";
+                number %= 100000;
+            }
+
+            if (number >= 1000) // Thousands
+            {
+                result += NumberToWords(number / 1000) + " Thousand ";
+                number %= 1000;
+            }
+
+            if (number >= 100) // Hundreds
+            {
+                result += ones[number / 100] + " Hundred ";
+                number %= 100;
+            }
+
+            if (number >= 20)
+            {
+                result += tens[number / 10] + " ";
+                number %= 10;
+            }
+            else if (number >= 10)
+            {
+                result += teens[number - 10] + " ";
+                number = 0;
+            }
+
+            if (number > 0)
+            {
+                result += ones[number] + " ";
+            }
+
+            return result.Trim();
         }
 
 
@@ -669,7 +650,8 @@ namespace eMedLis.Controllers
                         {
                             mode = p.PaymentMode,
                             amount = p.Amount.ToString("F2"),
-                            refNo = p.RefNo
+                            refNo = p.ReceiptNo,
+                            paymentDate = p.PaymentDate.ToString("dd/MM/yyyy HH:mm")
                         })
                     }
                 }, JsonRequestBehavior.AllowGet);
