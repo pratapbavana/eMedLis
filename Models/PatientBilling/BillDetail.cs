@@ -34,5 +34,7 @@ namespace eMedLis.Models.PatientBilling
 
         [Column(TypeName = "decimal(18, 2)")]
         public decimal NetAmount { get; set; }
+        public string SpecimenType { get; set; }
+        public string ContainerType { get; set; }
     }
 }
