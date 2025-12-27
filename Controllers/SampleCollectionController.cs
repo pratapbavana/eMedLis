@@ -42,22 +42,27 @@ namespace eMedLis.Controllers
         {
             try
             {
-                var collectionBarcode = _db.SaveSampleCollection(sampleCollection, sampleDetails);
+                var dbResult = _db.SaveSampleCollection(sampleCollection, sampleDetails);
 
-                return Json(new
+                if (dbResult.Success)
                 {
-                    success = true,
-                    message = "Sample collection created successfully!",
-                    collectionBarcode = collectionBarcode
-                });
+                    // Calculate status after saving all details
+                    _db.CalculateAndUpdateCollectionStatus(dbResult.SampleCollectionId);
+
+                    return Json(new
+                    {
+                        success = true,
+                        message = "Sample collection saved successfully",
+                        sampleCollectionId = dbResult.SampleCollectionId,
+                        collectionBarcode = dbResult.CollectionBarcode
+                    });
+                }
+
+                return Json(new { success = false, message = dbResult.Message });
             }
             catch (Exception ex)
             {
-                return Json(new
-                {
-                    success = false,
-                    message = "Error creating sample collection: " + ex.Message
-                });
+                return Json(new { success = false, message = ex.Message });
             }
         }
 
@@ -66,22 +71,33 @@ namespace eMedLis.Controllers
         {
             try
             {
-                var collections = _db.GetPendingCollections();
+                var collections = _db.GetPendingCollectionsWithSummary();
 
                 var result = collections.Select(c => new
                 {
                     sampleCollectionId = c.SampleCollection.SampleCollectionId,
-                    collectionBarcode = c.SampleCollection.CollectionBarcode,
+                    billSummaryId = c.SampleCollection.BillSummaryId,
+                    collectionBarcode = string.IsNullOrEmpty(c.SampleCollection.CollectionBarcode)
+                        ? "New"
+                        : c.SampleCollection.CollectionBarcode,
                     collectionDate = c.SampleCollection.CollectionDate.ToString("dd/MM/yyyy"),
                     collectionTime = c.SampleCollection.CollectionTime.ToString(@"hh\:mm"),
                     patientName = c.PatientInfo.PatName,
                     uhid = c.PatientInfo.UHID,
+                    ageGender = c.PatientInfo.Age + " / " + c.PatientInfo.Gender,
+                    mobileNo = c.PatientInfo.MobileNo,
                     billNo = c.BillSummary.BillNo,
+                    billDate = c.BillSummary.BillDate.ToString("dd/MM/yyyy"),
+                    netAmount = c.BillSummary.NetAmount.ToString("F2"),
                     priority = c.SampleCollection.Priority,
                     status = c.SampleCollection.CollectionStatus,
                     homeCollection = c.SampleCollection.HomeCollection,
-                    collectedBy = c.SampleCollection.CollectedBy
-                });
+                    collectedBy = c.SampleCollection.CollectedBy,
+                    totalInvestigations = c.TotalInvestigations,
+                    collectedCount = c.CollectedCount,
+                    pendingCount = c.PendingCount,
+                    progressPercent = c.TotalInvestigations > 0 ? (c.CollectedCount * 100 / c.TotalInvestigations) : 0
+                }).ToList();
 
                 return Json(result, JsonRequestBehavior.AllowGet);
             }
@@ -91,11 +107,126 @@ namespace eMedLis.Controllers
             }
         }
 
+
         [HttpGet]
         public ActionResult PrintCollectionLabels(int sampleCollectionId)
         {
             // Implementation for printing sample labels with barcodes
             return View();
         }
+        [HttpGet]
+        public JsonResult GetCollectionData(int? billId)
+        {
+            try
+            {
+                if (!billId.HasValue || billId == 0)
+                {
+                    return Json(new { success = false, message = "Invalid Bill ID" }, JsonRequestBehavior.AllowGet);
+                }
+
+                var viewModel = _db.GetBillForCollection(billId.Value);
+
+                if (viewModel == null || viewModel.BillSummary == null)
+                {
+                    return Json(new { success = false, message = "Bill not found" }, JsonRequestBehavior.AllowGet);
+                }
+
+                return Json(new
+                {
+                    success = true,
+                    data = new
+                    {
+                        billSummaryId = viewModel.BillSummary.BillSummaryId,
+                        billNo = viewModel.BillSummary.BillNo,
+                        billDate = viewModel.BillSummary.BillDate.ToString("dd/MM/yyyy"),
+                        netAmount = viewModel.BillSummary.NetAmount.ToString("F2"),
+                        collectionBarcode = "",
+                        sampleCollectionId = 0,
+                        collectionDate = (DateTime?)null,
+                        collectionTime = (TimeSpan?)null,
+
+                        patientInfo = new
+                        {
+                            patientInfoId = viewModel.PatientInfo.PatientInfoId,
+                            patName = viewModel.PatientInfo.PatName,
+                            uhid = viewModel.PatientInfo.UHID,
+                            mobileNo = viewModel.PatientInfo.MobileNo,
+                            age = viewModel.PatientInfo.Age,
+                            gender = viewModel.PatientInfo.Gender,
+                            area = viewModel.PatientInfo.Area,
+                            city = viewModel.PatientInfo.City
+                        },
+
+                        billDetails = viewModel.BillDetails.Select(d => new
+                        {
+                            invId = d.InvId,
+                            invName = d.InvName,
+                            rate = d.Rate.ToString("F2"),
+                            specimenType = d.SpecimenType ?? "Serum",
+                            containerType = d.ContainerType ?? "Plain Vacutainer",
+                            fastingRequired = d.FastingRequired,
+                            specialInstructions = d.SpecialInstructions
+                        }).ToList()
+                    }
+                }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
+                return Json(new { success = false, message = "Error: " + ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+
+        [HttpGet]
+        public JsonResult GetCollectionDetails(int sampleCollectionId)
+        {
+            try
+            {
+                var viewModel = _db.GetSampleCollectionDetailsForEdit(sampleCollectionId);
+
+                if (viewModel == null || viewModel.SampleCollection == null)
+                {
+                    return Json(new { success = false, message = "Collection not found" }, JsonRequestBehavior.AllowGet);
+                }
+
+                return Json(new
+                {
+                    success = true,
+                    data = new
+                    {
+                        sampleCollectionId = viewModel.SampleCollection.SampleCollectionId,
+                        collectionBarcode = viewModel.SampleCollection.CollectionBarcode,
+                        collectionDate = viewModel.SampleCollection.CollectionDate.ToString("dd/MM/yyyy"),
+                        collectionTime = viewModel.SampleCollection.CollectionTime.ToString(@"hh\:mm"),
+                        collectedBy = viewModel.SampleCollection.CollectedBy,
+                        priority = viewModel.SampleCollection.Priority,
+                        remarks = viewModel.SampleCollection.Remarks,
+                        homeCollection = viewModel.SampleCollection.HomeCollection,
+                        patientAddress = viewModel.SampleCollection.PatientAddress,
+
+                        sampleDetails = viewModel.SampleDetails.Select(d => new
+                        {
+                            sampleDetailId = d.SampleDetailId,
+                            invMasterId = d.InvMasterId,
+                            investigationName = d.InvestigationName,
+                            sampleStatus = d.SampleStatus,
+                            collectedQuantity = d.CollectedQuantity,
+                            rejectionReason = d.RejectionReason,
+                            collectionDate = d.CollectionDate,
+                            collectionTime = d.CollectionTime?.ToString(@"hh\:mm"),
+                            isCollected = d.IsCollected,
+                            isRejected = d.IsRejected
+                        }).ToList()
+                    }
+                }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "Error: " + ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+
     }
 }

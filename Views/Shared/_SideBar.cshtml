@@ -68,31 +68,31 @@
                     </a>
                     <ul class="nav nav-treeview">
                         <li class="nav-item">
-                            <a href="/Department/Index" class="nav-link">
+                            <a href="@Url.Action("Index", "Department")" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Department</p>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="/SubDepartment/Index" class="nav-link">
+                            <a href="@Url.Action("Index", "SubDepartment")" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Sub Department</p>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="/Lookup/Specimen" class="nav-link">
+                            <a href="@Url.Action("Specimen", "Lookup")" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Specimen</p>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="/Lookup/Vacutainer" class="nav-link">
+                            <a href="@Url.Action("Vacutainer", "Lookup")" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Vacutainer</p>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="/Investigation/Index" class="nav-link">
+                            <a href="@Url.Action("Index", "Investigation")" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Investigation Master</p>
                             </a>
@@ -109,7 +109,7 @@
                     </a>
                     <ul class="nav nav-treeview">
                         <li class="nav-item">
-                            <a href="/PatientBilling/Index" class="nav-link">
+                            <a href="@Url.Action("Index", "PatientBilling")" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Patient Billing</p>
                             </a>
@@ -121,7 +121,7 @@
                             </a>
                         </li>*@
                         <li class="nav-item">
-                            <a href="/DuePayment/Index" class="nav-link">
+                            <a href="@Url.Action("Index", "DuePayment")" class="nav-link">
                                 <i class="fa fa-credit-card nav-icon"></i>
                                 <p>Due Payments</p>
                             </a>
@@ -145,10 +145,18 @@
                     <a href="#" class="nav-link">
                         <i class="nav-icon fas fa-th"></i>
                         <p>
-                            Simple Link
-                            <span class="right badge badge-danger">New</span>
+                            Sample Collection
+                            <i class="right fas fa-angle-left"></i>
                         </p>
                     </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item">
+                            <a href="@Url.Action("Index", "SampleCollection")" class="nav-link">
+                                <i class="nav-icon fa fa-flask"></i>
+                                <p>Sample Collection</p>
+                            </a>
+                        </li>
+                    </ul>
                 </li>
             </ul>
         </nav>

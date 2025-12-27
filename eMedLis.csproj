@@ -236,6 +236,7 @@
     <Content Include="App_Assets\js\InvMaster\InvMaster.js" />
     <Content Include="App_Assets\js\PatientBilling\PatientBilling.js" />
     <Content Include="App_Assets\js\SampleCollection\SampleCollection.js" />
+    <Content Include="App_Assets\js\SampleCollection\SampleCollectionDashboard.js" />
     <Content Include="App_Assets\js\Specimen\Specimen.js" />
     <Content Include="App_Assets\js\SubDepartment\SubDepartment.js" />
     <Content Include="App_Assets\js\Vacutainer\Vacutainer.js" />
@@ -534,6 +535,7 @@
     <Content Include="Views\PatientBilling\Index.cshtml" />
     <Content Include="Views\DuePayment\Index.cshtml" />
     <Content Include="Views\SampleCollection\Index.cshtml" />
+    <Content Include="Views\SampleCollection\CreateCollection.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

@@ -40,7 +40,8 @@ namespace eMedLis.Controllers
                         success = true,
                         message = "Bill saved successfully!",
                         billId = result.BillSummaryId,
-                        billNo = result.BillNo
+                        billNo = result.BillNo,
+                        showSampleCollection = true
                     });
                 }
                 else

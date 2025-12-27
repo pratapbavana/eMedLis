@@ -310,17 +310,20 @@ function loaddatatable() {
                 data: null,
                 orderable: false,
                 searchable: false,
-                width: '120px',
+                width: '150px',
                 render: function (_, type, row) {
                     return `
                         <div class="btn-group btn-group-sm">
-                            <button class="btn btn-info" onclick="printBill(${row.BillSummaryId})">
+                            <button class="btn btn-info" onclick="printBill(${row.BillSummaryId})" title="Print Bill">
                                 <i class="fa fa-print"></i>
                             </button>
-                            <button class="btn btn-primary" onclick="viewBill(${row.BillSummaryId})">
+                            <button class="btn btn-primary" onclick="viewBill(${row.BillSummaryId})" title="View Bill">
                                 <i class="fa fa-eye"></i>
                             </button>
-                            <button class="btn btn-danger" onclick="cancelBill(${row.BillSummaryId}, '${row.BillNo}', '${row.PatientName}')">
+                            <button class="btn btn-success" onclick="collectSample(${row.BillSummaryId})" title="Collect Sample">
+                                <i class="fa fa-flask"></i>
+                            </button>
+                            <button class="btn btn-danger" onclick="cancelBill(${row.BillSummaryId}, '${row.BillNo}', '${row.PatientName}')" title="Cancel Bill">
                                 <i class="fa fa-ban"></i>
                             </button>
                         </div>`;
@@ -1092,7 +1095,7 @@ $('#printPreviewModal').on('hidden.bs.modal', function () {
 });
 // #endregion
 
-// #region Action Functions View, Print, Cancel
+// #region Action Functions View, Print, Collect Sample, Cancel
 function printBill(billId) {
     showPrintPreview(billId);
 }
@@ -1210,6 +1213,26 @@ function populateViewBillModal(billData) {
     `;
 
     $('#viewBillContent').html(content);
+}
+
+function collectSample(billId) {
+    currentBillToCollect = billId;
+
+    $.ajax({
+        url: '/SampleCollection/GetCollectionData/' + billId,
+        type: 'GET',
+        success: function (response) {
+            if (response.success) {
+                populateSampleCollectionModal(response.data);
+                $('#sampleCollectionModal').modal('show');
+            } else {
+                toastr.error('Error loading sample data: ' + response.message);
+            }
+        },
+        error: function () {
+            toastr.error('Error loading sample collection details.');
+        }
+    });
 }
 
 function cancelBill(billId, billNo, patientName) {

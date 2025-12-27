@@ -36,5 +36,7 @@ namespace eMedLis.Models.PatientBilling
         public decimal NetAmount { get; set; }
         public string SpecimenType { get; set; }
         public string ContainerType { get; set; }
+        public bool FastingRequired { get; set; }
+        public string SpecialInstructions { get; set; }
     }
 }

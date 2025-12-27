@@ -24,13 +24,11 @@ namespace eMedLis.Models.SampleCollection
         public string CreatedBy { get; set; }
         public DateTime? UpdatedDate { get; set; }
         public string UpdatedBy { get; set; }
-
         public virtual List<SampleCollectionDetail> CollectionDetails { get; set; }
     }
 
     public class SampleCollectionDetail
     {
-        [Key]
         public int SampleDetailId { get; set; }
         public int SampleCollectionId { get; set; }
         public int InvMasterId { get; set; }
@@ -44,6 +42,11 @@ namespace eMedLis.Models.SampleCollection
         public string SampleStatus { get; set; }
         public string CollectedQuantity { get; set; }
         public string RejectionReason { get; set; }
+        public DateTime? CollectionDate { get; set; }        // NEW
+        public TimeSpan? CollectionTime { get; set; }        // NEW
+        public DateTime? RejectionDate { get; set; }         // NEW
+        public bool IsCollected { get; set; }                // NEW
+        public bool IsRejected { get; set; }                 // NEW
         public DateTime CreatedDate { get; set; }
     }
 
@@ -69,6 +72,10 @@ namespace eMedLis.Models.SampleCollection
         public SampleCollectionModel SampleCollection { get; set; }
         public List<SampleCollectionDetail> SampleDetails { get; set; }
         public List<ContainerMaster> AvailableContainers { get; set; }
+        public int TotalInvestigations { get; set; }
+        public int CollectedCount { get; set; }
+        public int PendingCount { get; set; }
+        public int RejectedCount { get; set; }
     }
 
     public class CollectionInstructions

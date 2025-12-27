@@ -1,11 +1,9 @@
-﻿@model eMedLis.Models.SampleCollection.SampleCollectionViewModel
-
-@{
-    ViewBag.Title = "Sample Collection";
+﻿@{
+    ViewBag.Title = "Sample Collection Dashboard";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 @section Scripts{
-    @Scripts.Render("~/app_assets/js/SampleCollection/SampleCollection.js")
+    @Scripts.Render("~/app_assets/js/SampleCollection/SampleCollectionDashboard.js")
 }
 
 <div class="container-fluid">
@@ -14,173 +12,327 @@
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title">
-                        <i class="fa fa-flask"></i> Sample Collection - Bill No: @Model.BillSummary.BillNo
+                        <i class="fa fa-flask"></i> Sample Collection Dashboard
                     </h3>
+                    <div class="card-tools">
+                        <button class="btn btn-sm btn-info" onclick="refreshCollections()">
+                            <i class="fa fa-refresh"></i> Refresh
+                        </button>
+                        <button class="btn btn-sm btn-success" onclick="openNewCollection()">
+                            <i class="fa fa-plus"></i> New Collection
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body">
-                    <!-- Patient Information -->
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="card bg-light">
-                                <div class="card-header">
-                                    <h5><i class="fa fa-user"></i> Patient Details</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-6"><strong>Name:</strong> @Model.PatientInfo.PatName</div>
-                                        <div class="col-6"><strong>UHID:</strong> @Model.PatientInfo.UHID</div>
-                                    </div>
-                                    <div class="row mt-2">
-                                        <div class="col-6"><strong>Mobile:</strong> @Model.PatientInfo.MobileNo</div>
-                                        <div class="col-6"><strong>Age/Gender:</strong> @Model.PatientInfo.Age/@Model.PatientInfo.Gender</div>
-                                    </div>
-                                </div>
-                            </div>
+                    <!-- Filter Section -->
+                    <!-- Update filter section in Views/SampleCollection/Index.cshtml -->
+                    <div class="row mb-3">
+                        <div class="col-md-2">
+                            <label>Status Filter:</label>
+                            <select class="form-control form-control-sm" id="statusFilter">
+                                <option value="">All Status</option>
+                                <option value="New">New (Not Collected)</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Partial">Partial</option>
+                                <option value="Collected">Collected</option>
+                                <option value="InTransit">In Transit</option>
+                            </select>
                         </div>
-                        <div class="col-md-6">
-                            <div class="card bg-light">
-                                <div class="card-header">
-                                    <h5><i class="fa fa-file-text"></i> Collection Details</h5>
-                                </div>
-                                <div class="card-body">
-                                    <form id="collectionForm">
-                                        <div class="row">
-                                            <div class="col-6">
-                                                <label>Collection Date <span class="text-danger">*</span></label>
-                                                <input type="date" class="form-control" id="collectionDate" required>
-                                            </div>
-                                            <div class="col-6">
-                                                <label>Collection Time <span class="text-danger">*</span></label>
-                                                <input type="time" class="form-control" id="collectionTime" required>
-                                            </div>
-                                        </div>
-                                        <div class="row mt-2">
-                                            <div class="col-6">
-                                                <label>Priority</label>
-                                                <select class="form-control" id="priority">
-                                                    <option value="Normal">Normal</option>
-                                                    <option value="Urgent">Urgent</option>
-                                                    <option value="STAT">STAT</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-6">
-                                                <label>Collected By <span class="text-danger">*</span></label>
-                                                <input type="text" class="form-control" id="collectedBy" required>
-                                            </div>
-                                        </div>
-                                        <div class="row mt-2">
-                                            <div class="col-12">
-                                                <div class="form-check">
-                                                    <input type="checkbox" class="form-check-input" id="homeCollection">
-                                                    <label class="form-check-label">Home Collection</label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="row mt-2" id="addressSection" style="display: none;">
-                                            <div class="col-12">
-                                                <label>Collection Address</label>
-                                                <textarea class="form-control" id="patientAddress" rows="2"></textarea>
-                                            </div>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
+                        <div class="col-md-2">
+                            <label>Priority Filter:</label>
+                            <select class="form-control form-control-sm" id="priorityFilter">
+                                <option value="">All Priority</option>
+                                <option value="STAT">STAT</option>
+                                <option value="Urgent">Urgent</option>
+                                <option value="Normal">Normal</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label>Search:</label>
+                            <input type="text" class="form-control form-control-sm" id="searchBox"
+                                   placeholder="Search by Bill No, Patient, UHID...">
+                        </div>
+                        <div class="col-md-2">
+                            <label>Days Pending:</label>
+                            <select class="form-control form-control-sm" id="daysFilter">
+                                <option value="">All</option>
+                                <option value="0">Today</option>
+                                <option value="1">Last 24 Hours</option>
+                                <option value="7">Last 7 Days</option>
+                                <option value="30">Last 30 Days</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2" style="padding-top: 30px;">
+                            <button class="btn btn-primary btn-sm btn-block" onclick="applyFilters()">
+                                <i class="fa fa-search"></i> Filter
+                            </button>
                         </div>
                     </div>
 
-                    <!-- Sample Collection Details -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h5><i class="fa fa-vials"></i> Sample Collection Requirements</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-striped" id="samplesTable">
-                                    <thead class="thead-dark">
-                                        <tr>
-                                            <th>Investigation</th>
-                                            <th>Specimen Type</th>
-                                            <th>Container</th>
-                                            <th>Fasting Required</th>
-                                            <th>Instructions</th>
-                                            <th>Status</th>
-                                            <th>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var detail in Model.BillDetails)
-                                        {
-                                            <tr data-inv-id="@detail.InvId">
-                                                <td>@detail.InvName</td>
-                                                <td>
-                                                    <select class="form-control form-control-sm specimen-type">
-                                                        <option value="@detail.SpecimenType">@detail.SpecimenType</option>
-                                                        <option value="Serum">Serum</option>
-                                                        <option value="Plasma">Plasma</option>
-                                                        <option value="Whole Blood">Whole Blood</option>
-                                                        <option value="Urine">Urine</option>
-                                                        <option value="Stool">Stool</option>
-                                                    </select>
-                                                </td>
-                                                <td>
-                                                    <select class="form-control form-control-sm container-type">
-                                                        @foreach (var container in Model.AvailableContainers)
-                                                        {
-                                                            <option value="@container.ContainerName"
-                                                                    data-color="@container.CapColor"
-                                                                    data-volume="@container.Volume">
-                                                                @container.ContainerName (@container.CapColor)
-                                                            </option>
-                                                        }
-                                                    </select>
-                                                </td>
-                                                <td>
-                                                    <div class="form-check">
-                                                        <input type="checkbox" class="form-check-input fasting-required">
-                                                        <label class="form-check-label">Required</label>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <textarea class="form-control form-control-sm collection-instructions"
-                                                              rows="2" placeholder="Collection instructions..."></textarea>
-                                                </td>
-                                                <td>
-                                                    <select class="form-control form-control-sm sample-status">
-                                                        <option value="Not Collected">Not Collected</option>
-                                                        <option value="Collected">Collected</option>
-                                                        <option value="Rejected">Rejected</option>
-                                                    </select>
-                                                </td>
-                                                <td>
-                                                    <button type="button" class="btn btn-sm btn-info print-label"
-                                                            title="Print Label">
-                                                        <i class="fa fa-barcode"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Action Buttons -->
-                    <div class="row mt-4">
-                        <div class="col-12 text-center">
-                            <button type="button" class="btn btn-success btn-lg" id="saveCollection">
-                                <i class="fa fa-save"></i> Create Sample Collection
-                            </button>
-                            <button type="button" class="btn btn-info btn-lg ml-2" id="printAllLabels">
-                                <i class="fa fa-print"></i> Print All Labels
-                            </button>
-                            <a href="@Url.Action("Index")" class="btn btn-secondary btn-lg ml-2">
-                                <i class="fa fa-arrow-left"></i> Back
-                            </a>
-                        </div>
+                    <!-- Collections Table -->
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover" id="collectionsTable">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>Barcode</th>
+                                    <th>Date/Time</th>
+                                    <th>Bill No</th>
+                                    <th>Patient Name</th>
+                                    <th>UHID</th>
+                                    <th>Age/Gender</th>
+                                    <th>Priority</th>
+                                    <th>Status</th>
+                                    <th>Progress</th>
+                                    <th>Home Collection</th>
+                                    <th>Collected By</th>
+                                    <th>Mobile</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Sample Collection Modal (Reusable) -->
+<div class="modal fade" id="sampleCollectionModal" tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fa fa-flask"></i> Sample Collection
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                <!-- Patient Info Section -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-header">
+                                <h6><i class="fa fa-user"></i> Patient Details</h6>
+                            </div>
+                            <div class="card-body p-2">
+                                <div class="row mb-2">
+                                    <div class="col-6"><strong>Name:</strong></div>
+                                    <div class="col-6" id="scPatName"></div>
+                                </div>
+                                <div class="row mb-2">
+                                    <div class="col-6"><strong>UHID:</strong></div>
+                                    <div class="col-6" id="scUHID"></div>
+                                </div>
+                                <div class="row mb-2">
+                                    <div class="col-6"><strong>Mobile:</strong></div>
+                                    <div class="col-6" id="scMobile"></div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-6"><strong>Age/Gender:</strong></div>
+                                    <div class="col-6" id="scAgeGender"></div>
+                                </div>
+                                <div class="row" style="margin-top: 10px;">
+                                    <div class="col-6"><strong>Address:</strong></div>
+                                    <div class="col-6" id="scAddress" style="font-size: 12px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-header">
+                                <h6><i class="fa fa-file-text"></i> Collection Info</h6>
+                            </div>
+                            <div class="card-body p-2">
+                                <div class="row mb-2">
+                                    <div class="col-6"><strong>Bill No:</strong></div>
+                                    <div class="col-6" id="scBillNo"></div>
+                                </div>
+                                <div class="row mb-2">
+                                    <div class="col-6"><strong>Collection Barcode:</strong></div>
+                                    <div class="col-6" id="scCollectionBarcode" style="font-weight: bold; color: #28a745;"></div>
+                                </div>
+                                <div class="row mb-2">
+                                    <div class="col-6"><strong>Collection Date:</strong></div>
+                                    <div class="col-6"><input type="date" class="form-control form-control-sm" id="scCollectionDate"></div>
+                                </div>
+                                <div class="row mb-2">
+                                    <div class="col-6"><strong>Collection Time:</strong></div>
+                                    <div class="col-6"><input type="time" class="form-control form-control-sm" id="scCollectionTime"></div>
+                                </div>
+                                <div class="row mb-2">
+                                    <div class="col-6"><strong>Priority:</strong></div>
+                                    <div class="col-6">
+                                        <select class="form-control form-control-sm" id="scPriority">
+                                            <option value="Normal">Normal</option>
+                                            <option value="Urgent">Urgent</option>
+                                            <option value="STAT">STAT</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-6"><strong>Collected By:</strong></div>
+                                    <div class="col-6"><input type="text" class="form-control form-control-sm" id="scCollectedBy" value="Admin"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sample Details Table -->
+                <div class="card">
+                    <div class="card-header">
+                        <h6><i class="fa fa-vials"></i> Sample Requirements</h6>
+                    </div>
+                    <div class="card-body p-2">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped" id="scSamplesTable">
+                                <thead class="bg-secondary text-white">
+                                    <tr>
+                                        <th style="width: 20%;">Test Name</th>
+                                        <th style="width: 12%;">Specimen</th>
+                                        <th style="width: 12%;">Container</th>
+                                        <th style="width: 8%;">Fasting</th>
+                                        <th style="width: 10%;">Status</th>
+                                        <th style="width: 12%;">Quantity</th>
+                                        <th style="width: 12%;">Coll. Date/Time</th>
+                                        <th style="width: 14%;">Rejection Reason</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Additional Info -->
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h6><i class="fa fa-info-circle"></i> Additional Information</h6>
+                    </div>
+                    <div class="card-body p-2">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label><strong>Remarks:</strong></label>
+                                <textarea class="form-control form-control-sm" id="scRemarks" rows="2" placeholder="Optional remarks..."></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check mt-4">
+                                    <input type="checkbox" class="form-check-input" id="scHomeCollection">
+                                    <label class="form-check-label"><strong>Home Collection</strong></label>
+                                </div>
+                                <div class="form-check mt-2" id="scAddressSection" style="display: none;">
+                                    <textarea class="form-control form-control-sm" id="scCollectionAddress" rows="2" placeholder="Collection address..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-info" id="btnPrintLabels">
+                    <i class="fa fa-barcode"></i> Print Labels
+                </button>
+                <button type="button" class="btn btn-success" id="btnSaveCollection">
+                    <i class="fa fa-save"></i> Save Collection
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- In Views/SampleCollection/Index.cshtml -->
+<script>
+    function loadCollectionsTable() {
+        if ($.fn.DataTable.isDataTable('#collectionsTable')) {
+            $('#collectionsTable').DataTable().destroy();
+        }
+
+        $('#collectionsTable').DataTable({
+            ajax: {
+                url: AppRoutes.SampleCollection.getPendingCollections,
+                dataSrc: ''
+            },
+            order: [[1, 'desc']], // Sort by date/time
+            columns: [
+                {
+                    data: 'collectionBarcode',
+                    render: function (data) {
+                        return data === 'New' ? '<span class="badge badge-warning">New</span>' : data;
+                    }
+                },
+                {
+                    data: null,
+                    render: function (data, type, row) {
+                        return row.collectionDate + ' ' + row.collectionTime;
+                    }
+                },
+                { data: 'billNo' },
+                { data: 'patientName' },
+                { data: 'uhid' },
+                { data: 'ageGender' },
+                {
+                    data: 'priority',
+                    render: function (data) {
+                        var badgeClass = data === 'STAT' ? 'badge-danger' :
+                            data === 'Urgent' ? 'badge-warning' : 'badge-info';
+                        return '<span class="badge ' + badgeClass + '">' + data + '</span>';
+                    }
+                },
+                {
+                    data: 'status',
+                    render: function (data) {
+                        var badgeClass = data === 'New' ? 'badge-secondary' :
+                            data === 'Collected' ? 'badge-success' :
+                                data === 'InTransit' ? 'badge-info' :
+                                    data === 'Partial' ? 'badge-warning' : 'badge-secondary';
+                        return '<span class="badge ' + badgeClass + '">' + data + '</span>';
+                    }
+                },
+                {
+                    data: 'homeCollection',
+                    render: function (data) {
+                        return data ? '<i class="fa fa-home text-success"></i>' : '-';
+                    }
+                },
+                { data: 'collectedBy' },
+                { data: 'mobileNo' },
+                {
+                    data: null,
+                    orderable: false,
+                    render: function (data, type, row) {
+                        var buttons = `
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button class="btn btn-primary" onclick="editCollection(${row.billSummaryId})" title="Collect Sample">
+                            <i class="fa fa-flask"></i>
+                        </button>`;
+
+                        if (row.collectionBarcode !== 'New') {
+                            buttons += `
+                        <button class="btn btn-info" onclick="viewCollection(${row.sampleCollectionId})" title="View">
+                            <i class="fa fa-eye"></i>
+                        </button>
+                        <button class="btn btn-success" onclick="printCollectionLabels(${row.sampleCollectionId})" title="Print Labels">
+                            <i class="fa fa-barcode"></i>
+                        </button>`;
+                        }
+
+                        buttons += `
+                        <button class="btn btn-warning" onclick="updateStatus(${row.sampleCollectionId})" title="Update Status">
+                            <i class="fa fa-check"></i>
+                        </button>
+                    </div>`;
+
+                        return buttons;
+                    }
+                }
+            ],
+            pageLength: 25,
+            lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]]
+        });
+    }
+</script>

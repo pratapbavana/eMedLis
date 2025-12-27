@@ -1,0 +1,186 @@
+@model eMedLis.Models.SampleCollection.SampleCollectionViewModel
+
+@{
+    ViewBag.Title = "Sample Collection";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+@section Scripts{
+    @Scripts.Render("~/app_assets/js/SampleCollection/SampleCollection.js")
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fa fa-flask"></i> Sample Collection - Bill No: @Model.BillSummary.BillNo
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <!-- Patient Information -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-header">
+                                    <h5><i class="fa fa-user"></i> Patient Details</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-6"><strong>Name:</strong> @Model.PatientInfo.PatName</div>
+                                        <div class="col-6"><strong>UHID:</strong> @Model.PatientInfo.UHID</div>
+                                    </div>
+                                    <div class="row mt-2">
+                                        <div class="col-6"><strong>Mobile:</strong> @Model.PatientInfo.MobileNo</div>
+                                        <div class="col-6"><strong>Age/Gender:</strong> @Model.PatientInfo.Age/@Model.PatientInfo.Gender</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-header">
+                                    <h5><i class="fa fa-file-text"></i> Collection Details</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form id="collectionForm">
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <label>Collection Date <span class="text-danger">*</span></label>
+                                                <input type="date" class="form-control" id="collectionDate" required>
+                                            </div>
+                                            <div class="col-6">
+                                                <label>Collection Time <span class="text-danger">*</span></label>
+                                                <input type="time" class="form-control" id="collectionTime" required>
+                                            </div>
+                                        </div>
+                                        <div class="row mt-2">
+                                            <div class="col-6">
+                                                <label>Priority</label>
+                                                <select class="form-control" id="priority">
+                                                    <option value="Normal">Normal</option>
+                                                    <option value="Urgent">Urgent</option>
+                                                    <option value="STAT">STAT</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-6">
+                                                <label>Collected By <span class="text-danger">*</span></label>
+                                                <input type="text" class="form-control" id="collectedBy" required>
+                                            </div>
+                                        </div>
+                                        <div class="row mt-2">
+                                            <div class="col-12">
+                                                <div class="form-check">
+                                                    <input type="checkbox" class="form-check-input" id="homeCollection">
+                                                    <label class="form-check-label">Home Collection</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row mt-2" id="addressSection" style="display: none;">
+                                            <div class="col-12">
+                                                <label>Collection Address</label>
+                                                <textarea class="form-control" id="patientAddress" rows="2"></textarea>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sample Collection Details -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fa fa-vials"></i> Sample Collection Requirements</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped" id="samplesTable">
+                                    <thead class="thead-dark">
+                                        <tr>
+                                            <th>Investigation</th>
+                                            <th>Specimen Type</th>
+                                            <th>Container</th>
+                                            <th>Fasting Required</th>
+                                            <th>Instructions</th>
+                                            <th>Status</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var detail in Model.BillDetails)
+                                        {
+                                            <tr data-inv-id="@detail.InvId">
+                                                <td>@detail.InvName</td>
+                                                <td>
+                                                    <select class="form-control form-control-sm specimen-type">
+                                                        <option value="@detail.SpecimenType">@detail.SpecimenType</option>
+                                                        <option value="Serum">Serum</option>
+                                                        <option value="Plasma">Plasma</option>
+                                                        <option value="Whole Blood">Whole Blood</option>
+                                                        <option value="Urine">Urine</option>
+                                                        <option value="Stool">Stool</option>
+                                                    </select>
+                                                </td>
+                                                <td>
+                                                    <select class="form-control form-control-sm container-type">
+                                                        @foreach (var container in Model.AvailableContainers)
+                                                        {
+                                                            <option value="@container.ContainerName"
+                                                                    data-color="@container.CapColor"
+                                                                    data-volume="@container.Volume">
+                                                                @container.ContainerName (@container.CapColor)
+                                                            </option>
+                                                        }
+                                                    </select>
+                                                </td>
+                                                <td>
+                                                    <div class="form-check">
+                                                        <input type="checkbox" class="form-check-input fasting-required">
+                                                        <label class="form-check-label">Required</label>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <textarea class="form-control form-control-sm collection-instructions"
+                                                              rows="2" placeholder="Collection instructions..."></textarea>
+                                                </td>
+                                                <td>
+                                                    <select class="form-control form-control-sm sample-status">
+                                                        <option value="Not Collected">Not Collected</option>
+                                                        <option value="Collected">Collected</option>
+                                                        <option value="Rejected">Rejected</option>
+                                                    </select>
+                                                </td>
+                                                <td>
+                                                    <button type="button" class="btn btn-sm btn-info print-label"
+                                                            title="Print Label">
+                                                        <i class="fa fa-barcode"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="row mt-4">
+                        <div class="col-12 text-center">
+                            <button type="button" class="btn btn-success btn-lg" id="saveCollection">
+                                <i class="fa fa-save"></i> Create Sample Collection
+                            </button>
+                            <button type="button" class="btn btn-info btn-lg ml-2" id="printAllLabels">
+                                <i class="fa fa-print"></i> Print All Labels
+                            </button>
+                            <a href="@Url.Action("Index")" class="btn btn-secondary btn-lg ml-2">
+                                <i class="fa fa-arrow-left"></i> Back
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

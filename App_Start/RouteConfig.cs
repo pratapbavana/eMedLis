@@ -43,7 +43,16 @@ namespace eMedLis
            defaults: new { controller = "DuePayment", action = "PrintReceipt" },
            constraints: new { paymentId = @"\d+" }
        );
-
+            routes.MapRoute(
+            name: "SampleCollectionGetData",
+            url: "SampleCollection/GetCollectionData/{billId}",
+            defaults: new { controller = "SampleCollection", action = "GetCollectionData" }
+        );
+            routes.MapRoute(
+            name: "PrintLabels",
+            url: "SampleCollection/PrintCollectionLabels/{billId}",
+            defaults: new { controller = "SampleCollection", action = "PrintCollectionLabels" }
+        );
             routes.MapRoute(
                 name: "Default",
                 url: "{controller}/{action}/{id}",
