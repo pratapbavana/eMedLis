@@ -627,6 +627,48 @@ namespace eMedLis.DAL.SampleCollection
             }
         }
 
+        public SampleCollectionModel GetSampleCollectionByBillId(int billSummaryId)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                using (var cmd = new SqlCommand(@"
+            SELECT TOP 1 
+                SampleCollectionId, BillSummaryId, CollectionBarcode, 
+                CollectionDate, CollectionTime, CollectionStatus,
+                Priority, Remarks, HomeCollection, PatientAddress, CollectedBy
+            FROM SampleCollection
+            WHERE BillSummaryId = @BillSummaryId
+            ORDER BY SampleCollectionId DESC", connection))
+                {
+                    cmd.Parameters.AddWithValue("@BillSummaryId", billSummaryId);
+                    connection.Open();
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            return new SampleCollectionModel
+                            {
+                                SampleCollectionId = SafeGetInt(reader, "SampleCollectionId"),
+                                BillSummaryId = SafeGetInt(reader, "BillSummaryId"),
+                                CollectionBarcode = SafeGetString(reader, "CollectionBarcode"),
+                                CollectionDate = SafeGetDateTime(reader, "CollectionDate"),
+                                CollectionTime = SafeGetTimeSpan(reader, "CollectionTime"),
+                                CollectionStatus = SafeGetString(reader, "CollectionStatus"),
+                                Priority = SafeGetString(reader, "Priority"),
+                                Remarks = SafeGetString(reader, "Remarks"),
+                                HomeCollection = SafeGetBoolean(reader, "HomeCollection"),
+                                PatientAddress = SafeGetString(reader, "PatientAddress"),
+                                CollectedBy = SafeGetString(reader, "CollectedBy")
+                            };
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
+
         #endregion
     }
 

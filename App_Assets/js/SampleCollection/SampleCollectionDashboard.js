@@ -182,16 +182,25 @@ function editCollection(billSummaryId) {
         type: 'GET',
         dataType: 'json',
         success: function (response) {
-            console.log('Response received:', response);
+            console.log('GetCollectionData Response:', response);
 
             if (response.success) {
+                // First populate with bill details
                 populateSampleCollectionModal(response.data);
 
-                // Check if already has collection
-                if (response.data.sampleCollectionId && response.data.sampleCollectionId > 0) {
-                    loadExistingCollection(response.data.sampleCollectionId);
+                // IMPORTANT: Check if bill already has a sample collection
+                // The response.data should include sampleCollectionId if it exists
+                var sampleCollectionId = response.data.sampleCollectionId || 0;
+
+                if (sampleCollectionId > 0) {
+                    console.log('Bill already has collection:', sampleCollectionId);
+                    // Load and apply existing collection data
+                    loadExistingCollection(sampleCollectionId);
+                } else {
+                    console.log('New collection for this bill');
                 }
 
+                // Show modal after data is populated
                 $('#sampleCollectionModal').modal('show');
             } else {
                 toastr.error('Error: ' + response.message);
@@ -199,9 +208,8 @@ function editCollection(billSummaryId) {
         },
         error: function (xhr, status, error) {
             console.error('AJAX Error:', error);
-            console.error('Status:', status);
             console.error('Response:', xhr.responseText);
-            toastr.error('Error loading collection details: ' + error);
+            toastr.error('Error loading collection details');
         }
     });
 }
@@ -214,27 +222,33 @@ function loadExistingCollection(sampleCollectionId) {
         type: 'GET',
         dataType: 'json',
         success: function (response) {
-            console.log('Existing collection data:', response);
+            console.log('Existing collection response:', response);
 
             if (response.success && response.data) {
                 var data = response.data;
 
-                // Update master info
+                // Update master collection info
                 $('#scCollectionBarcode').text(data.collectionBarcode || 'New');
                 $('#scPriority').val(data.priority || 'Normal');
                 $('#scCollectedBy').val(data.collectedBy || 'Admin');
                 $('#scRemarks').val(data.remarks || '');
                 $('#scHomeCollection').prop('checked', data.homeCollection || false);
 
-                // Update sample details
-                updateModalWithExistingData(data.sampleDetails || []);
+                // CRITICAL: Update sample statuses with existing data
+                if (data.sampleDetails && data.sampleDetails.length > 0) {
+                    updateModalWithExistingData(data.sampleDetails);
+                } else {
+                    console.warn('No sample details found');
+                }
             }
         },
         error: function (xhr, status, error) {
             console.error('Error loading collection details:', error);
+            console.error('Response:', xhr.responseText);
         }
     });
 }
+
 
 function updateModalWithExistingData(sampleDetails) {
     console.log('Updating modal with existing samples:', sampleDetails);
@@ -243,36 +257,73 @@ function updateModalWithExistingData(sampleDetails) {
         var invId = parseInt($(this).data('inv-id'));
         var $row = $(this);
 
-        // Find matching existing detail
+        // Find matching existing detail by InvMasterId
         var existingDetail = sampleDetails.find(d => d.invMasterId === invId);
 
         if (existingDetail) {
             console.log('Found existing detail for InvId:', invId, existingDetail);
 
+            // Store the sample detail ID for updates
             $row.data('sample-detail-id', existingDetail.sampleDetailId || 0);
 
-            // Set status
-            $row.find('.sample-status').val(existingDetail.sampleStatus || 'Pending');
+            // Set the status dropdown to the existing status
+            var statusDropdown = $row.find('.sample-status');
+            statusDropdown.val(existingDetail.sampleStatus || 'Pending');
 
-            // Set quantity if collected
+            console.log('Set status to:', existingDetail.sampleStatus);
+
+            // Handle based on current status
             if (existingDetail.sampleStatus === 'Collected') {
-                $row.find('.collected-quantity').val(existingDetail.collectedQuantity || '');
-                $row.find('.sample-status').prop('disabled', true).addClass('bg-success text-white');
-                $row.find('.collected-quantity').prop('disabled', true);
+                // Show as collected - disable editing
+                statusDropdown.prop('disabled', true)
+                    .addClass('bg-success text-white');
 
-                // Show collection date/time
+                $row.find('.collected-quantity').val(existingDetail.collectedQuantity || '')
+                    .prop('disabled', true);
+
+                // Show collection date/time with timestamp
                 if (existingDetail.collectionDate) {
-                    var dateObj = new Date(existingDetail.collectionDate);
-                    var dateStr = dateObj.toLocaleDateString('en-GB');
-                    var timeStr = existingDetail.collectionTime ? existingDetail.collectionTime.substring(0, 5) : '';
-                    $row.find('.collection-datetime').val(dateStr + ' ' + timeStr);
+                    var dateStr = existingDetail.collectionDate;
+                    var timeStr = existingDetail.collectionTime || '';
+                    var timestamp = dateStr + ' ' + timeStr;
+                    $row.find('.collection-datetime').val(timestamp);
+                    console.log('Displayed collection time:', timestamp);
                 }
+
+                $row.find('.rejection-reason').hide();
+
             } else if (existingDetail.sampleStatus === 'Rejected') {
-                $row.find('.rejection-reason').val(existingDetail.rejectionReason || '');
-                $row.find('.rejection-reason').show();
-                $row.find('.sample-status').prop('disabled', true).addClass('bg-danger text-white');
-                $row.find('.collected-quantity').prop('disabled', true);
+                // Show as rejected - disable editing
+                statusDropdown.prop('disabled', true)
+                    .addClass('bg-danger text-white');
+
+                $row.find('.collected-quantity').prop('disabled', true).val('');
+                $row.find('.rejection-reason').val(existingDetail.rejectionReason || '')
+                    .show()
+                    .prop('disabled', true);
+
+                // Show rejection date
+                if (existingDetail.rejectionDate) {
+                    var rejectionDate = new Date(existingDetail.rejectionDate).toLocaleDateString('en-GB');
+                    $row.find('.collection-datetime').val('Rejected: ' + rejectionDate);
+                }
+
+            } else {
+                // Status is Pending - allow editing
+                statusDropdown.prop('disabled', false)
+                    .removeClass('bg-success text-white bg-danger text-white');
+
+                $row.find('.collected-quantity').prop('disabled', false);
+                $row.find('.rejection-reason').hide();
+                $row.find('.collection-datetime').val('');
             }
+        } else {
+            console.log('No existing detail found for InvId:', invId);
+            // New sample - all fields editable
+            $row.find('.sample-status').val('Pending').prop('disabled', false);
+            $row.find('.collected-quantity').prop('disabled', false).val('');
+            $row.find('.rejection-reason').hide();
+            $row.find('.collection-datetime').val('');
         }
     });
 }
@@ -317,19 +368,21 @@ function populateSampleCollectionModal(data) {
     $('#scCollectionBarcode').text(data.collectionBarcode || 'New');
 
     // Set current date and time if new
-    if (!data.sampleCollectionId || data.sampleCollectionId === 0) {
-        var now = new Date();
-        $('#scCollectionDate').val(now.toISOString().split('T')[0]);
-        $('#scCollectionTime').val(now.toTimeString().slice(0, 5));
+    var now = new Date();
+    var todayISO = now.toISOString().split('T')[0];
+    var currentTime = now.toTimeString().slice(0, 5);
+
+    if (data.sampleCollectionId && data.sampleCollectionId > 0) {
+        // Existing collection
+        var formattedDate = formatDateForInput(data.collectionDate);
+        var formattedTime = formatTimeForInput(data.collectionTime);
+
+        $('#scCollectionDate').val(formattedDate || todayISO);
+        $('#scCollectionTime').val(formattedTime || currentTime);
     } else {
-        // If existing, set from data
-        if (data.collectionDate) {
-            var dateObj = new Date(data.collectionDate);
-            $('#scCollectionDate').val(dateObj.toISOString().split('T')[0]);
-        }
-        if (data.collectionTime) {
-            $('#scCollectionTime').val(data.collectionTime);
-        }
+        // New collection
+        $('#scCollectionDate').val(todayISO);
+        $('#scCollectionTime').val(currentTime);
     }
 
     // Clear and populate samples table
@@ -518,4 +571,65 @@ function applyFilters() {
 function refreshCollections() {
     $('#collectionsTable').DataTable().ajax.reload();
     toastr.info('Collections refreshed.');
+}
+
+function formatDateForInput(dateValue) {
+    if (!dateValue) {
+        return '';
+    }
+
+    try {
+        // If already a string in YYYY-MM-DD format
+        if (typeof dateValue === 'string') {
+            if (dateValue.match(/^\d{4}-\d{2}-\d{2}/)) {
+                return dateValue.substring(0, 10);
+            }
+
+            // If DD/MM/YYYY format
+            if (dateValue.includes('/')) {
+                var parts = dateValue.split('/');
+                if (parts.length === 3) {
+                    return parts[2] + '-' + parts[1] + '-' + parts[0];
+                }
+            }
+        }
+
+        // If JavaScript Date object
+        if (dateValue instanceof Date && !isNaN(dateValue)) {
+            return dateValue.toISOString().split('T')[0];
+        }
+
+        return '';
+    } catch (e) {
+        console.error('Date formatting error:', e);
+        return '';
+    }
+}
+
+/**
+ * Convert time string to HH:MM format
+ */
+function formatTimeForInput(timeValue) {
+    if (!timeValue) {
+        return '';
+    }
+
+    try {
+        // If already HH:MM or HH:MM:SS format
+        if (typeof timeValue === 'string') {
+            return timeValue.substring(0, 5);
+        }
+
+        // If TimeSpan object or milliseconds
+        if (typeof timeValue === 'number') {
+            var hours = Math.floor(timeValue / 3600000);
+            var minutes = Math.floor((timeValue % 3600000) / 60000);
+            return String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+        }
+
+        return '';
+    } catch (e) {
+        console.error('Time formatting error:', e);
+        return '';
+    }
 }

@@ -131,6 +131,12 @@ namespace eMedLis.Controllers
                     return Json(new { success = false, message = "Bill not found" }, JsonRequestBehavior.AllowGet);
                 }
 
+                // Check if this bill already has a sample collection
+                var existingCollection = _db.GetSampleCollectionByBillId(billId.Value);
+                int sampleCollectionId = existingCollection?.SampleCollectionId ?? 0;
+                string collectionBarcode = existingCollection?.CollectionBarcode ?? "";
+                string collectionStatus = existingCollection?.CollectionStatus ?? "New";
+
                 return Json(new
                 {
                     success = true,
@@ -140,10 +146,13 @@ namespace eMedLis.Controllers
                         billNo = viewModel.BillSummary.BillNo,
                         billDate = viewModel.BillSummary.BillDate.ToString("dd/MM/yyyy"),
                         netAmount = viewModel.BillSummary.NetAmount.ToString("F2"),
-                        collectionBarcode = "",
-                        sampleCollectionId = 0,
-                        collectionDate = (DateTime?)null,
-                        collectionTime = (TimeSpan?)null,
+
+                        // Include existing collection info if available
+                        sampleCollectionId = sampleCollectionId,
+                        collectionBarcode = collectionBarcode,
+                        collectionStatus = collectionStatus,
+                        collectionDate = existingCollection?.CollectionDate.ToString("dd/MM/yyyy"),
+                        collectionTime = existingCollection?.CollectionTime.ToString(@"hh\:mm"),
 
                         patientInfo = new
                         {
@@ -213,10 +222,11 @@ namespace eMedLis.Controllers
                             sampleStatus = d.SampleStatus,
                             collectedQuantity = d.CollectedQuantity,
                             rejectionReason = d.RejectionReason,
-                            collectionDate = d.CollectionDate,
+                            collectionDate = d.CollectionDate?.ToString("dd/MM/yyyy"),
                             collectionTime = d.CollectionTime?.ToString(@"hh\:mm"),
-                            isCollected = d.IsCollected,
-                            isRejected = d.IsRejected
+                            rejectionDate = d.RejectionDate?.ToString("dd/MM/yyyy HH:mm"),
+                            isCollected = d.SampleStatus == "Collected",
+                            isRejected = d.SampleStatus == "Rejected"
                         }).ToList()
                     }
                 }, JsonRequestBehavior.AllowGet);
@@ -226,7 +236,6 @@ namespace eMedLis.Controllers
                 return Json(new { success = false, message = "Error: " + ex.Message }, JsonRequestBehavior.AllowGet);
             }
         }
-
 
     }
 }
