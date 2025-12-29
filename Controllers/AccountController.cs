@@ -12,7 +12,7 @@ using eMedLis.Models;
 
 namespace eMedLis.Controllers
 {
-    [Authorize]
+    
     public class AccountController : Controller
     {
         private ApplicationSignInManager _signInManager;

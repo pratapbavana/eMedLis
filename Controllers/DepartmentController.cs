@@ -7,6 +7,7 @@ using System.Web.Mvc;
 
 namespace eMedLis.Controllers
 {
+    [Authorize]
     public class DepartmentController : Controller
     {
         DepartmentDB depDB = new DepartmentDB();

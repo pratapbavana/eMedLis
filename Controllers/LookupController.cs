@@ -7,6 +7,7 @@ using eMedLis.Models;
 
 namespace eMedLis.Controllers
 {
+    [Authorize]
     public class LookupController : Controller
     {
         readonly LookupDB LookupDB = new LookupDB();

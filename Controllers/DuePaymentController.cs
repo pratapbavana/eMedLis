@@ -8,6 +8,7 @@ using eMedLis.Models.PatientBilling;
 
 namespace eMedLis.Controllers
 {
+    [Authorize]
     public class DuePaymentController : Controller
     {
         public ActionResult Index()

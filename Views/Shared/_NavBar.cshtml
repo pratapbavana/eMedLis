@@ -12,6 +12,27 @@
             <a href="#" class="nav-link">Contact</a>
         </li>
     </ul>
+    @if (Request.IsAuthenticated)
+    {
+        <ul class="nav navbar-nav navbar-right">
+            <li>
+                <span class="navbar-text">Hello, @User.Identity.Name!</span>
+            </li>
+            <li>
+                @using (Html.BeginForm("LogOff", "Account", FormMethod.Post, new { id = "logoutForm" }))
+                {
+                    @Html.AntiForgeryToken()
+                    <a href="#" onclick="document.getElementById('logoutForm').submit();return false;">Log off</a>
+                }
+            </li>
+        </ul>
+    }
+    else
+    {
+        <ul class="nav navbar-nav navbar-right">
+            <li>@Html.ActionLink("Login", "Login", "Account")</li>
+        </ul>
+    }
 
     <!-- Right navbar links -->
     <ul class="navbar-nav ml-auto">

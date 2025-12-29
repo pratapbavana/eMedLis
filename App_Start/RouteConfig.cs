@@ -54,10 +54,10 @@ namespace eMedLis
             defaults: new { controller = "SampleCollection", action = "PrintCollectionLabels" }
         );
             routes.MapRoute(
-                name: "Default",
-                url: "{controller}/{action}/{id}",
-                defaults: new { controller = "Home", action = "Index", id = UrlParameter.Optional }
-            );
+            name: "Default",
+            url: "{controller}/{action}/{id}",
+            defaults: new { controller = "Account", action = "Login", id = UrlParameter.Optional }  // CHANGED
+        );
         }
     }
 }

@@ -7,6 +7,7 @@ using System.Web.Mvc;
 
 namespace eMedLis.Controllers
 {
+    [Authorize]
     public class InvestigationController : Controller
     {
         InvMasterDB invDB = new InvMasterDB();

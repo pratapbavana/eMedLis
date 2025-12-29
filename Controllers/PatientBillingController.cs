@@ -11,6 +11,7 @@ using ZXing.Common;
 
 namespace eMedLis.Controllers
 {
+    [Authorize]
     public class PatientBillingController : Controller
     {
         // GET: PatientBilling (You might have an Index view for this controller)

@@ -7,6 +7,7 @@ using System.Web.Mvc;
 
 namespace eMedLis.Controllers
 {
+    [Authorize]
     public class SampleCollectionController : Controller
     {
         private readonly SampleCollectionDB _db;

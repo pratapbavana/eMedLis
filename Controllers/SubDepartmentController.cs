@@ -7,6 +7,7 @@ using eMedLis.Models;
 
 namespace eMedLis.Controllers
 {
+    [Authorize]
     public class SubDepartmentController : Controller
     {
         SubDepartmentDB depDB = new SubDepartmentDB();
