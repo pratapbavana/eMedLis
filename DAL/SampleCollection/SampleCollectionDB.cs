@@ -381,6 +381,7 @@ namespace eMedLis.DAL.SampleCollection
         public SampleCollectionViewModel GetSampleCollectionDetailsForEdit(int sampleCollectionId)
         {
             var viewModel = new SampleCollectionViewModel();
+            viewModel.SampleDetails = new List<SampleCollectionDetail>();
 
             using (var connection = new SqlConnection(_connectionString))
             {
@@ -388,82 +389,120 @@ namespace eMedLis.DAL.SampleCollection
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
                     cmd.Parameters.AddWithValue("@SampleCollectionId", sampleCollectionId);
+                    cmd.CommandTimeout = 30;
 
-                    connection.Open();
-                    using (var reader = cmd.ExecuteReader())
+                    try
                     {
-                        // Read master
-                        if (reader.Read())
+                        connection.Open();
+                        using (var reader = cmd.ExecuteReader())
                         {
-                            viewModel.SampleCollection = new SampleCollectionModel
+                            // Read master record
+                            if (reader.Read())
                             {
-                                SampleCollectionId = SafeGetInt(reader, "SampleCollectionId"),
-                                BillSummaryId = SafeGetInt(reader, "BillSummaryId"),
-                                CollectionBarcode = SafeGetString(reader, "CollectionBarcode"),
-                                CollectionDate = SafeGetDateTime(reader, "CollectionDate"),
-                                CollectionTime = SafeGetTimeSpan(reader, "CollectionTime"),
-                                CollectedBy = SafeGetString(reader, "CollectedBy"),
-                                CollectionStatus = SafeGetString(reader, "CollectionStatus"),
-                                Priority = SafeGetString(reader, "Priority"),
-                                Remarks = SafeGetString(reader, "Remarks"),
-                                HomeCollection = SafeGetBoolean(reader, "HomeCollection"),
-                                PatientAddress = SafeGetString(reader, "PatientAddress")
-                            };
-
-                            viewModel.PatientInfo = new PatientInfo
-                            {
-                                PatientInfoId = SafeGetInt(reader, "PatientInfoId"),
-                                PatName = SafeGetString(reader, "PatName"),
-                                UHID = SafeGetString(reader, "UHID"),
-                                MobileNo = SafeGetString(reader, "MobileNo"),
-                                Age = SafeGetInt(reader, "Age"),
-                                Gender = SafeGetString(reader, "Gender")
-                            };
-
-                            viewModel.BillSummary = new BillSummary
-                            {
-                                BillSummaryId = SafeGetInt(reader, "BillSummaryId"),
-                                BillNo = SafeGetString(reader, "BillNo"),
-                                NetAmount = SafeGetDecimal(reader, "NetAmount")
-                            };
-                        }
-
-                        // Read details
-                        var sampleDetails = new List<SampleCollectionDetail>();
-                        if (reader.NextResult())
-                        {
-                            while (reader.Read())
-                            {
-                                sampleDetails.Add(new SampleCollectionDetail
+                                viewModel.SampleCollection = new SampleCollectionModel
                                 {
-                                    SampleDetailId = SafeGetInt(reader, "SampleDetailId"),
                                     SampleCollectionId = SafeGetInt(reader, "SampleCollectionId"),
-                                    InvMasterId = SafeGetInt(reader, "InvMasterId"),
-                                    InvestigationName = SafeGetString(reader, "InvestigationName"),
-                                    SpecimenType = SafeGetString(reader, "SpecimenType"),
-                                    ContainerType = SafeGetString(reader, "ContainerType"),
-                                    SampleBarcode = SafeGetString(reader, "SampleBarcode"),
-                                    FastingRequired = SafeGetBoolean(reader, "FastingRequired"),
-                                    SpecialInstructions = SafeGetString(reader, "SpecialInstructions"),
-                                    SampleStatus = SafeGetString(reader, "SampleStatus"),
-                                    CollectedQuantity = SafeGetString(reader, "CollectedQuantity"),
-                                    RejectionReason = SafeGetString(reader, "RejectionReason"),
-                                    CollectionDate = SafeGetDateTime(reader, "CollectionDate", null),
-                                    CollectionTime = SafeGetTimeSpan(reader, "CollectionTime", null),
-                                    RejectionDate = SafeGetDateTime(reader, "RejectionDate", null),
-                                    IsCollected = SafeGetBoolean(reader, "IsCollected"),
-                                    IsRejected = SafeGetBoolean(reader, "IsRejected")
-                                });
+                                    BillSummaryId = SafeGetInt(reader, "BillSummaryId"),
+                                    CollectionBarcode = SafeGetString(reader, "CollectionBarcode"),
+                                    CollectionDate = SafeGetDateTime(reader, "CollectionDate"),
+                                    CollectionTime = SafeGetTimeSpan(reader, "CollectionTime"),
+                                    CollectedBy = SafeGetString(reader, "CollectedBy"),
+                                    CollectionStatus = SafeGetString(reader, "CollectionStatus"),
+                                    Priority = SafeGetString(reader, "Priority"),
+                                    Remarks = SafeGetString(reader, "Remarks"),
+                                    HomeCollection = SafeGetBoolean(reader, "HomeCollection"),
+                                    PatientAddress = SafeGetString(reader, "PatientAddress")
+                                };
+
+                                viewModel.PatientInfo = new PatientInfo
+                                {
+                                    PatientInfoId = SafeGetInt(reader, "PatientInfoId"),
+                                    PatName = SafeGetString(reader, "PatName"),
+                                    UHID = SafeGetString(reader, "UHID"),
+                                    MobileNo = SafeGetString(reader, "MobileNo"),
+                                    Age = SafeGetInt(reader, "Age"),
+                                    Gender = SafeGetString(reader, "Gender")
+                                };
+
+                                viewModel.BillSummary = new BillSummary
+                                {
+                                    BillSummaryId = SafeGetInt(reader, "BillSummaryId"),
+                                    BillNo = SafeGetString(reader, "BillNo"),
+                                    NetAmount = SafeGetDecimal(reader, "NetAmount")
+                                };
+                            }
+
+                            // Read detail records
+                            if (reader.NextResult())
+                            {
+                                while (reader.Read())
+                                {
+                                    var detail = new SampleCollectionDetail
+                                    {
+                                        SampleDetailId = SafeGetInt(reader, "SampleDetailId"),
+                                        SampleCollectionId = SafeGetInt(reader, "SampleCollectionId"),
+                                        InvMasterId = SafeGetInt(reader, "InvMasterId"),
+                                        InvestigationName = SafeGetString(reader, "InvestigationName"),
+                                        SpecimenType = SafeGetString(reader, "SpecimenType"),
+                                        ContainerType = SafeGetString(reader, "ContainerType"),
+                                        SampleBarcode = SafeGetString(reader, "SampleBarcode"),
+                                        FastingRequired = SafeGetBoolean(reader, "FastingRequired"),
+                                        SpecialInstructions = SafeGetString(reader, "SpecialInstructions"),
+                                        SampleStatus = SafeGetString(reader, "SampleStatus", "Pending"),
+                                        CollectedQuantity = SafeGetString(reader, "CollectedQuantity"),
+                                        RejectionReason = SafeGetString(reader, "RejectionReason")
+                                    };
+
+                                    // Handle nullable dates
+                                    int collectionDateOrdinal;
+                                    try
+                                    {
+                                        collectionDateOrdinal = reader.GetOrdinal("CollectionDate");
+                                        if (!reader.IsDBNull(collectionDateOrdinal))
+                                        {
+                                            detail.CollectionDate = reader.GetDateTime(collectionDateOrdinal);
+                                        }
+                                    }
+                                    catch { }
+
+                                    int collectionTimeOrdinal;
+                                    try
+                                    {
+                                        collectionTimeOrdinal = reader.GetOrdinal("CollectionTime");
+                                        if (!reader.IsDBNull(collectionTimeOrdinal))
+                                        {
+                                            detail.CollectionTime = reader.GetTimeSpan(collectionTimeOrdinal);
+                                        }
+                                    }
+                                    catch { }
+
+                                    int rejectionDateOrdinal;
+                                    try
+                                    {
+                                        rejectionDateOrdinal = reader.GetOrdinal("RejectionDate");
+                                        if (!reader.IsDBNull(rejectionDateOrdinal))
+                                        {
+                                            detail.RejectionDate = reader.GetDateTime(rejectionDateOrdinal);
+                                        }
+                                    }
+                                    catch { }
+
+                                    viewModel.SampleDetails.Add(detail);
+                                }
                             }
                         }
-
-                        viewModel.SampleDetails = sampleDetails;
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine("DAL Error in GetSampleCollectionDetailsForEdit: " + ex.Message);
+                        throw;
                     }
                 }
             }
 
             return viewModel;
         }
+
 
         public SampleCollectionResult SaveSampleCollection(SampleCollectionModel sampleCollection, List<SampleCollectionDetail> sampleDetails)
         {

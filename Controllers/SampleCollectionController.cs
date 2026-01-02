@@ -189,16 +189,56 @@ namespace eMedLis.Controllers
 
 
         [HttpGet]
-        public JsonResult GetCollectionDetails(int sampleCollectionId)
+        public JsonResult GetCollectionDetails(int? sampleCollectionId = null)
         {
             try
             {
-                var viewModel = _db.GetSampleCollectionDetailsForEdit(sampleCollectionId);
+                // Validate parameter
+                if (!sampleCollectionId.HasValue || sampleCollectionId <= 0)
+                {
+                    System.Diagnostics.Debug.WriteLine("Invalid sampleCollectionId: " + sampleCollectionId);
+                    return Json(new { success = false, message = "Invalid Collection ID" }, JsonRequestBehavior.AllowGet);
+                }
 
-                if (viewModel == null || viewModel.SampleCollection == null)
+                System.Diagnostics.Debug.WriteLine("Getting collection details for ID: " + sampleCollectionId);
+
+                var viewModel = _db.GetSampleCollectionDetailsForEdit(sampleCollectionId.Value);
+
+                if (viewModel == null)
                 {
                     return Json(new { success = false, message = "Collection not found" }, JsonRequestBehavior.AllowGet);
                 }
+
+                if (viewModel.SampleCollection == null)
+                {
+                    return Json(new { success = false, message = "Collection master record not found" }, JsonRequestBehavior.AllowGet);
+                }
+
+                // Build sample details list
+                var sampleDetailsArray = new List<object>();
+
+                if (viewModel.SampleDetails != null && viewModel.SampleDetails.Count > 0)
+                {
+                    foreach (var d in viewModel.SampleDetails)
+                    {
+                        sampleDetailsArray.Add(new
+                        {
+                            sampleDetailId = d.SampleDetailId,
+                            invMasterId = d.InvMasterId,
+                            investigationName = d.InvestigationName,
+                            sampleStatus = d.SampleStatus ?? "Pending",
+                            collectedQuantity = d.CollectedQuantity,
+                            rejectionReason = d.RejectionReason,
+                            collectionDate = d.CollectionDate.HasValue ? d.CollectionDate.Value.ToString("dd/MM/yyyy") : "",
+                            collectionTime = d.CollectionTime.HasValue ? d.CollectionTime.Value.ToString(@"hh\:mm") : "",
+                            rejectionDate = d.RejectionDate.HasValue ? d.RejectionDate.Value.ToString("dd/MM/yyyy HH:mm") : "",
+                            isCollected = d.SampleStatus == "Collected",
+                            isRejected = d.SampleStatus == "Rejected"
+                        });
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine("Returning " + sampleDetailsArray.Count + " sample details");
 
                 return Json(new
                 {
@@ -206,37 +246,32 @@ namespace eMedLis.Controllers
                     data = new
                     {
                         sampleCollectionId = viewModel.SampleCollection.SampleCollectionId,
-                        collectionBarcode = viewModel.SampleCollection.CollectionBarcode,
+                        collectionBarcode = viewModel.SampleCollection.CollectionBarcode ?? "",
                         collectionDate = viewModel.SampleCollection.CollectionDate.ToString("dd/MM/yyyy"),
                         collectionTime = viewModel.SampleCollection.CollectionTime.ToString(@"hh\:mm"),
-                        collectedBy = viewModel.SampleCollection.CollectedBy,
-                        priority = viewModel.SampleCollection.Priority,
-                        remarks = viewModel.SampleCollection.Remarks,
+                        collectedBy = viewModel.SampleCollection.CollectedBy ?? "Admin",
+                        priority = viewModel.SampleCollection.Priority ?? "Normal",
+                        remarks = viewModel.SampleCollection.Remarks ?? "",
                         homeCollection = viewModel.SampleCollection.HomeCollection,
-                        patientAddress = viewModel.SampleCollection.PatientAddress,
-
-                        sampleDetails = viewModel.SampleDetails.Select(d => new
-                        {
-                            sampleDetailId = d.SampleDetailId,
-                            invMasterId = d.InvMasterId,
-                            investigationName = d.InvestigationName,
-                            sampleStatus = d.SampleStatus,
-                            collectedQuantity = d.CollectedQuantity,
-                            rejectionReason = d.RejectionReason,
-                            collectionDate = d.CollectionDate?.ToString("dd/MM/yyyy"),
-                            collectionTime = d.CollectionTime?.ToString(@"hh\:mm"),
-                            rejectionDate = d.RejectionDate?.ToString("dd/MM/yyyy HH:mm"),
-                            isCollected = d.SampleStatus == "Collected",
-                            isRejected = d.SampleStatus == "Rejected"
-                        }).ToList()
+                        patientAddress = viewModel.SampleCollection.PatientAddress ?? "",
+                        sampleDetails = sampleDetailsArray
                     }
                 }, JsonRequestBehavior.AllowGet);
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = "Error: " + ex.Message }, JsonRequestBehavior.AllowGet);
+                System.Diagnostics.Debug.WriteLine("GetCollectionDetails Error: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("Stack: " + ex.StackTrace);
+
+                return Json(new
+                {
+                    success = false,
+                    message = "Error: " + ex.Message
+                }, JsonRequestBehavior.AllowGet);
             }
         }
+
+
 
     }
 }

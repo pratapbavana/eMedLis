@@ -19,7 +19,7 @@
                 <span class="navbar-text">Hello, @User.Identity.Name!</span>
             </li>
             <li>
-                @using (Html.BeginForm("LogOff", "Account", FormMethod.Post, new { id = "logoutForm" }))
+                @using (Html.BeginForm("Logout", "Account", FormMethod.Post, new { id = "logoutForm" }))
                 {
                     @Html.AntiForgeryToken()
                     <a href="#" onclick="document.getElementById('logoutForm').submit();return false;">Log off</a>

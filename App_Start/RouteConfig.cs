@@ -46,12 +46,19 @@ namespace eMedLis
             routes.MapRoute(
             name: "SampleCollectionGetData",
             url: "SampleCollection/GetCollectionData/{billId}",
-            defaults: new { controller = "SampleCollection", action = "GetCollectionData" }
+            defaults: new { controller = "SampleCollection", action = "GetCollectionData" },
+            constraints: new { billId = @"\d+" }
         );
             routes.MapRoute(
             name: "PrintLabels",
             url: "SampleCollection/PrintCollectionLabels/{billId}",
             defaults: new { controller = "SampleCollection", action = "PrintCollectionLabels" }
+        );
+            routes.MapRoute(
+            name: "SampleCollectionGetDetails",
+            url: "SampleCollection/GetCollectionDetails/{sampleCollectionId}",
+            defaults: new { controller = "SampleCollection", action = "GetCollectionDetails" },
+            constraints: new { sampleCollectionId = @"\d+" }
         );
             routes.MapRoute(
             name: "Default",
