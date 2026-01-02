@@ -1,7 +1,9 @@
+﻿using eMedLis.Helpers;
 using eMedLis.Models;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Security.Principal;
 using System.Web;
@@ -22,6 +24,17 @@ namespace eMedLis
             FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);
             RouteConfig.RegisterRoutes(RouteTable.Routes);
             BundleConfig.RegisterBundles(BundleTable.Bundles);
+
+            try
+            {
+                ConfigurationHelper.ValidateJwtConfiguration();
+                Debug.WriteLine("✓ Application startup: JWT Configuration validated successfully");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"✗ Application startup error: {ex.Message}");
+                Debug.WriteLine($"Stack Trace: {ex.StackTrace}");
+            }
         }
 
         protected void Application_AuthenticateRequest(object sender, EventArgs e)

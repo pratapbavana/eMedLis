@@ -21,7 +21,7 @@ namespace eMedLis.Models
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
         public ApplicationDbContext()
-            : base("DefaultConnection", throwIfV1Schema: false)
+            : base("emeddb", throwIfV1Schema: false)
         {
         }
 

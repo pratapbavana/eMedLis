@@ -5,9 +5,14 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using eMedLis.Models;
+using eMedLis.Helpers;
 
 namespace eMedLis.Models
 {
+    /// <summary>
+    /// JWT Token Handler for generating and validating JWT tokens
+    /// Reads configuration from Web.config via ConfigurationHelper
+    /// </summary>
     public class JwtTokenHandler
     {
         private readonly string _secretKey;
@@ -16,14 +21,39 @@ namespace eMedLis.Models
         private readonly string _audience;
 
         /// <summary>
-        /// Constructor with configuration parameters
+        /// Constructor - Loads JWT configuration from Web.config
         /// </summary>
         public JwtTokenHandler()
         {
-            _secretKey = "GTYGDhgyuteYTYE56785HESF879EFUGEDFYH32UGDJKHukuyerewh";
-            _expirationMinutes = 60;
-            _issuer = "eMedLis";
-            _audience = "eMedLisUsers";
+            // Load configuration from Web.config through ConfigurationHelper
+            _secretKey = ConfigurationHelper.GetJwtSecretKey();
+            _expirationMinutes = ConfigurationHelper.GetJwtExpirationMinutes();
+            _issuer = ConfigurationHelper.GetJwtIssuer();
+            _audience = ConfigurationHelper.GetJwtAudience();
+
+            // Validate configuration on instantiation
+            ValidateConfiguration();
+        }
+
+        /// <summary>
+        /// Validate that all JWT configuration values are valid
+        /// </summary>
+        private void ValidateConfiguration()
+        {
+            if (string.IsNullOrWhiteSpace(_secretKey))
+                throw new InvalidOperationException("JWT Secret Key cannot be empty");
+
+            if (_secretKey.Length < 32)
+                throw new InvalidOperationException("JWT Secret Key must be at least 32 characters");
+
+            if (_expirationMinutes <= 0)
+                throw new InvalidOperationException("JWT Expiration must be greater than 0");
+
+            if (string.IsNullOrWhiteSpace(_issuer))
+                throw new InvalidOperationException("JWT Issuer cannot be empty");
+
+            if (string.IsNullOrWhiteSpace(_audience))
+                throw new InvalidOperationException("JWT Audience cannot be empty");
         }
 
         /// <summary>
@@ -127,6 +157,7 @@ namespace eMedLis.Models
 
         /// <summary>
         /// Decode token without validation (for debugging only)
+        /// DO NOT USE IN PRODUCTION without proper logging
         /// </summary>
         public JwtSecurityToken DecodeToken(string token)
         {

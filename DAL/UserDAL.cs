@@ -9,7 +9,7 @@ namespace eMedLis.DAL
 {
     public class UserDAL
     {
-        private static string connectionString = ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString;
+        private static string connectionString = ConfigurationManager.ConnectionStrings["emeddb"].ConnectionString;
 
         public static User GetUserByUsername(string username)
         {

@@ -7,7 +7,7 @@ namespace eMedLis.DAL
 {
     public class AuditDAL
     {
-        private static string connectionString = ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString;
+        private static string connectionString = ConfigurationManager.ConnectionStrings["emeddb"].ConnectionString;
 
         /// <summary>
         /// Log user action to audit table

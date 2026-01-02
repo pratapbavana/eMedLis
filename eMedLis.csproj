@@ -254,6 +254,7 @@
     <Compile Include="Controllers\PatientBillingController.cs" />
     <Compile Include="Controllers\SampleCollectionController.cs" />
     <Compile Include="Controllers\SubDepartmentController.cs" />
+    <Compile Include="Controllers\TestController.cs" />
     <Compile Include="DAL\AuditDAL.cs" />
     <Compile Include="DAL\PatientBilling\PatientBillingDB.cs" />
     <Compile Include="DAL\SampleCollection\SampleCollectionDB.cs" />
@@ -261,6 +262,7 @@
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
+    <Compile Include="Helpers\ConfigurationHelper.cs" />
     <Compile Include="Models\AuthModels.cs" />
     <Compile Include="Models\Department.cs" />
     <Compile Include="Models\DepartmentDB.cs" />
