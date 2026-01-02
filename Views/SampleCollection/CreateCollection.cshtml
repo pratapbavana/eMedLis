@@ -1,4 +1,4 @@
-@model eMedLis.Models.SampleCollection.SampleCollectionViewModel
+@model eMedLis.Domain.SampleCollection.Entities.SampleCollectionViewModel
 
 @{
     ViewBag.Title = "Sample Collection";
@@ -27,7 +27,7 @@
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-6"><strong>Name:</strong> @Model.PatientInfo.PatName</div>
+                                        <div class="col-6"><strong>Name:</strong>@Model.PatientInfo.PatName</div>
                                         <div class="col-6"><strong>UHID:</strong> @Model.PatientInfo.UHID</div>
                                     </div>
                                     <div class="row mt-2">

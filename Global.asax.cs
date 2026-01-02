@@ -1,5 +1,5 @@
-﻿using eMedLis.Helpers;
-using eMedLis.Models;
+﻿using eMedLis.Domain.UserManagement.ViewModels;
+using eMedLis.Helpers;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;

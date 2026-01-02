@@ -8,7 +8,7 @@ using Microsoft.Owin.Security.Cookies;
 using Microsoft.Owin.Security.Jwt;
 using Microsoft.IdentityModel.Tokens;
 using Owin;
-using eMedLis.Models;
+using eMedLis.Infrastructure.Authentication;
 
 namespace eMedLis
 {

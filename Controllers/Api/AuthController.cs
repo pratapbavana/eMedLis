@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.Web.Http;
 using System.Security.Claims;
-using eMedLis.DAL;
-using eMedLis.Models;
+using eMedLis.Domain.UserManagement.ViewModels;
+using eMedLis.Infrastructure.Data;
+using eMedLis.Infrastructure.Authentication;
+using eMedLis.Domain.UserManagement.Entities;
 
 namespace eMedLis.Controllers.Api
 {
