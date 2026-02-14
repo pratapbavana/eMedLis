@@ -66,6 +66,20 @@ namespace eMedLis.DAL
             }
         }
 
+        public static bool UsernameExists(string username)
+        {
+            using (SqlConnection conn = new SqlConnection(connectionString))
+            {
+                const string query = "SELECT COUNT(1) FROM Users WHERE Username = @Username";
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@Username", username);
+                    conn.Open();
+                    return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+                }
+            }
+        }
+
         public static bool UpdateLastLogin(int userId)
         {
             using (SqlConnection conn = new SqlConnection(connectionString))

@@ -1,14 +1,13 @@
 ﻿using System;
 using System.Security.Cryptography;
-using System.Text;
 
 namespace eMedLis.Models
 {
     public class PasswordHasher
     {
         private const int SaltSize = 16; // 128 bits
-        private const int HashSize = 20; // 160 bits
-        private const int Iterations = 10000; // PBKDF2 iterations
+        private const int HashSize = 32; // 256 bits
+        private const int Iterations = 100000; // PBKDF2 iterations
 
         /// <summary>
         /// Hashes a password and returns both hash and salt as base64 strings
@@ -63,10 +62,15 @@ namespace eMedLis.Models
                     hashAlgorithm: HashAlgorithmName.SHA256))
                 {
                     byte[] hashBytes = pbkdf2.GetBytes(HashSize);
-                    string computedHash = Convert.ToBase64String(hashBytes);
+                    byte[] storedHashBytes = Convert.FromBase64String(storedHash);
 
-                    // Compare with stored hash
-                    return computedHash == storedHash;
+                    if (storedHashBytes.Length != hashBytes.Length)
+                    {
+                        return false;
+                    }
+
+                    // Compare with stored hash using constant-time operation
+                    return CryptographicOperations.FixedTimeEquals(hashBytes, storedHashBytes);
                 }
             }
             catch

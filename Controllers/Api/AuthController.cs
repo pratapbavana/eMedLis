@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Web.Http;
+using System.Net;
 using System.Security.Claims;
+using System.Web.Http;
 using eMedLis.DAL;
 using eMedLis.Models;
 
@@ -24,7 +25,7 @@ namespace eMedLis.Controllers.Api
                     response.Success = false;
                     response.Message = "Username and password required";
                     response.Errors.Add("Validation failed");
-                    return Ok(response);
+                    return Content(HttpStatusCode.BadRequest, response);
                 }
 
                 User user = UserDAL.GetUserByUsername(request.UserName.Trim());
@@ -34,14 +35,14 @@ namespace eMedLis.Controllers.Api
                     response.Success = false;
                     response.Message = "Invalid username or password";
                     response.Errors.Add("Authentication failed");
-                    return Ok(response);
+                    return Content(HttpStatusCode.Unauthorized, response);
                 }
 
                 if (user.IsLocked || !user.IsActive)
                 {
                     response.Success = false;
                     response.Message = user.IsLocked ? "Account is locked" : "Account is inactive";
-                    return Ok(response);
+                    return Content(HttpStatusCode.Forbidden, response);
                 }
 
                 List<string> roles = UserDAL.GetUserRoles(user.UserId);
@@ -65,12 +66,12 @@ namespace eMedLis.Controllers.Api
 
                 return Ok(response);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 response.Success = false;
                 response.Message = "Error during login";
-                response.Errors.Add(ex.Message);
-                return Ok(response);
+                response.Errors.Add("Unexpected error occurred");
+                return InternalServerError();
             }
         }
 
@@ -88,7 +89,25 @@ namespace eMedLis.Controllers.Api
                     response.Success = false;
                     response.Message = "Username and password required";
                     response.Errors.Add("Validation failed");
-                    return Ok(response); 
+                    return Content(HttpStatusCode.BadRequest, response);
+                }
+
+                if (request.Password.Length < 8)
+                {
+                    response.Success = false;
+                    response.Message = "Password must be at least 8 characters";
+                    response.Errors.Add("Validation failed");
+                    return Content(HttpStatusCode.BadRequest, response);
+                }
+
+                string normalizedUserName = request.UserName.Trim();
+
+                if (UserDAL.UsernameExists(normalizedUserName))
+                {
+                    response.Success = false;
+                    response.Message = "Username already exists";
+                    response.Errors.Add("Validation failed");
+                    return Content(HttpStatusCode.Conflict, response);
                 }
 
                 // Hash password
@@ -97,8 +116,8 @@ namespace eMedLis.Controllers.Api
                 // Create new user
                 User newUser = new User
                 {
-                    UserName = request.UserName.Trim(),
-                    Email = request.UserName, // Use username as email for now
+                    UserName = normalizedUserName,
+                    Email = normalizedUserName, // Use username as email for now
                     PasswordHash = hash,
                     PasswordSalt = salt,
                     IsActive = true,
@@ -111,14 +130,14 @@ namespace eMedLis.Controllers.Api
                 response.Message = "User created successfully";
                 response.Data = new { UserId = userId };
 
-                return Ok(response);
+                return Content(HttpStatusCode.Created, response);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 response.Success = false;
                 response.Message = "Error creating user";
-                response.Errors.Add(ex.Message);
-                return Ok(response);  
+                response.Errors.Add("Unexpected error occurred");
+                return InternalServerError();
             }
         }
 
@@ -135,9 +154,8 @@ namespace eMedLis.Controllers.Api
                 var claimsPrincipal = User as ClaimsPrincipal;
                 var userIdClaim = claimsPrincipal?.FindFirst("sub");
 
-                if (userIdClaim != null)
+                if (userIdClaim != null && int.TryParse(userIdClaim.Value, out _))
                 {
-                    int userId = int.Parse(userIdClaim.Value);
                     // Log logout if needed
                 }
 
@@ -145,12 +163,12 @@ namespace eMedLis.Controllers.Api
                 response.Message = "Logout successful";
                 return Ok(response);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 response.Success = false;
                 response.Message = "Error during logout";
-                response.Errors.Add(ex.Message);
-                return Ok(response);  
+                response.Errors.Add("Unexpected error occurred");
+                return InternalServerError();
             }
         }
 
@@ -184,7 +202,12 @@ namespace eMedLis.Controllers.Api
                 }
 
                 string username = usernameClaim.Value;
-                int userId = int.Parse(userIdClaim.Value);
+                if (!int.TryParse(userIdClaim.Value, out int userId))
+                {
+                    response.Success = false;
+                    response.Message = "Invalid token";
+                    return Content(HttpStatusCode.Unauthorized, response);
+                }
                 string email = emailClaim?.Value ?? "";
 
                 User user = UserDAL.GetUserByUsername(username);
@@ -209,12 +232,12 @@ namespace eMedLis.Controllers.Api
 
                 return Ok(response);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 response.Success = false;
                 response.Message = "Error validating token";
-                response.Errors.Add(ex.Message);
-                return Ok(response);
+                response.Errors.Add("Unexpected error occurred");
+                return InternalServerError();
             }
         }
     }
