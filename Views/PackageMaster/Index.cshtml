@@ -1,0 +1,107 @@
+@{
+    ViewBag.Title = "Package Master";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section Scripts{
+    @Scripts.Render("~/App_Assets/js/PackageMaster/PackageMaster.js")
+}
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card card-primary card-outline">
+            <div class="card-header justify-content-between align-items-center">
+                <div class="col col-sm-10">
+                    <h3 class="card-title text-lg font-weight-bold">
+                        <i class="fas fa-box-open mr-2 text-primary"></i>Package Master
+                    </h3>
+                </div>
+                <div class="col col-sm-2 offset-sm-10 text-sm-right">
+                    <button type="button" class="btn btn-blue btn-sm" data-toggle="modal" data-target="#package_modal" onclick="return clearPackageForm();">
+                        Add Package
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-bordered table-striped nowrap" style="width:100%" id="packageTable">
+                    <thead>
+                        <tr>
+                            <th>Serial</th>
+                            <th>Id</th>
+                            <th>Code</th>
+                            <th>Package Name</th>
+                            <th>Price</th>
+                            <th>Discount</th>
+                            <th>Investigations</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="package_modal">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 id="packageModalHeader" class="modal-title">Add Package</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <input type="hidden" id="PackageId" value="0" />
+                    <div class="form-row">
+                        <div class="form-group col-md-4">
+                            <label for="PackageCode">Package Code</label>
+                            <input type="text" id="PackageCode" class="form-control" maxlength="30" />
+                        </div>
+                        <div class="form-group col-md-8">
+                            <label for="PackageName">Package Name</label>
+                            <input type="text" id="PackageName" class="form-control" maxlength="200" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="ReportingName">Reporting Name</label>
+                            <input type="text" id="ReportingName" class="form-control" maxlength="200" />
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label for="PackagePrice">Package Price</label>
+                            <input type="number" id="PackagePrice" class="form-control" min="0" step="0.01" />
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label for="PackageDiscount">Discount</label>
+                            <input type="number" id="PackageDiscount" class="form-control" min="0" step="0.01" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-12">
+                            <label for="PackageInvestigations">Investigations</label>
+                            <select id="PackageInvestigations" class="form-control" multiple="multiple"></select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-10">
+                            <label for="PackageDescription">Description</label>
+                            <input type="text" id="PackageDescription" class="form-control" maxlength="500" />
+                        </div>
+                        <div class="form-group col-md-2">
+                            <label for="PackageActive">Status</label>
+                            <div class="icheck-success d-block mt-2">
+                                <input type="checkbox" id="PackageActive" checked="checked" />
+                                <label for="PackageActive">Active</label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-blue" id="btnPackageAdd" onclick="return savePackage('Add');"><span>Add Package</span></button>
+                <button class="btn btn-primary d-none" id="btnPackageUpdate" onclick="return savePackage('Update');"><span>Update Package</span></button>
+            </div>
+        </div>
+    </div>
+</div>

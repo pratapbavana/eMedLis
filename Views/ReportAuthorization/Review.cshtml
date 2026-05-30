@@ -1,0 +1,70 @@
+@{
+    ViewBag.Title = "Review Report";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section Scripts {
+    <script>
+        var reportAuthorizationSampleDetailId = @ViewBag.SampleDetailId;
+    </script>
+    @Scripts.Render("~/App_Assets/js/ReportAuthorization/ReportAuthorizationReview.js")
+}
+
+<div class="container-fluid mt-3">
+    <div class="card card-primary card-outline">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title text-lg font-weight-bold mb-0">
+                <i class="fas fa-file-signature mr-2 text-primary"></i>Report Review & Authorization
+            </h3>
+            <a href="@Url.Action("Index", "ReportAuthorization")" class="btn btn-sm btn-secondary">Back to List</a>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-3"><strong>Bill No:</strong> <span id="rvBillNo">-</span></div>
+                <div class="col-md-3"><strong>Patient:</strong> <span id="rvPatientName">-</span></div>
+                <div class="col-md-3"><strong>Age/Gender:</strong> <span id="rvAgeGender">-</span></div>
+                <div class="col-md-3"><strong>Sample ID:</strong> <span id="rvSampleId">-</span></div>
+                <div class="col-md-3"><strong>Investigation:</strong> <span id="rvInvestigation">-</span></div>
+                <div class="col-md-3"><strong>Department:</strong> <span id="rvDepartment">-</span></div>
+                <div class="col-md-3"><strong>Status:</strong> <span id="rvStatus" class="badge badge-primary">-</span></div>
+                <div class="col-md-3"><strong>Authorized By:</strong> <span id="rvAuthorizedBy">-</span></div>
+            </div>
+
+            <div class="table-responsive mb-3">
+                <table class="table table-sm table-bordered" id="rvTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 25%;">Parameter</th>
+                            <th style="width: 15%;">Method</th>
+                            <th style="width: 15%;">Result</th>
+                            <th style="width: 10%;">Unit</th>
+                            <th style="width: 20%;">Range</th>
+                            <th style="width: 10%;">Flag</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div class="form-group">
+                <label for="rvInterpretation">Interpretation</label>
+                <textarea id="rvInterpretation" class="form-control" rows="4" placeholder="Doctor interpretation/comments"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="rvRejectReason">Reject Reason (required only when rejecting)</label>
+                <textarea id="rvRejectReason" class="form-control" rows="2" placeholder="Reason for rejection"></textarea>
+            </div>
+
+            <div id="rvSignatureWrap" class="mb-3 d-none">
+                <strong>Doctor Signature:</strong><br />
+                <img id="rvSignature" style="max-width:200px; max-height:80px;" alt="Doctor Signature" />
+            </div>
+
+            <div class="text-right">
+                <button type="button" class="btn btn-outline-primary btn-sm" id="btnRvSave">Save</button>
+                <button type="button" class="btn btn-danger btn-sm" id="btnRvReject">Reject Report</button>
+                <button type="button" class="btn btn-primary btn-sm" id="btnRvAuthorize">Authorize Report</button>
+            </div>
+        </div>
+    </div>
+</div>

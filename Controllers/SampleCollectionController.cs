@@ -1,9 +1,14 @@
 ﻿using eMedLis.DAL.SampleCollection;
+using eMedLis.Models.PatientBilling;
 using eMedLis.Models.SampleCollection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web.Mvc;
+using System.Drawing.Imaging;
+using System.IO;
+using ZXing;
+using ZXing.Common;
 
 namespace eMedLis.Controllers
 {
@@ -17,32 +22,58 @@ namespace eMedLis.Controllers
             _db = new SampleCollectionDB();
         }
 
+        private static string NormalizeStatus(string status)
+        {
+            if (string.IsNullOrWhiteSpace(status))
+                return "New";
+
+            switch (status.Trim())
+            {
+                case "InTransit":
+                    return "In Transit";
+                case "In Progress":
+                    return "Pending";
+                case "Partially Collected":
+                case "Partial Rejection":
+                    return "Partial";
+                default:
+                    return status.Trim();
+            }
+        }
+
         public ActionResult Index()
         {
             return View();
         }
 
-        [HttpGet]
-        public ActionResult CreateCollection(int billId)
-        {
-            try
-            {
-                var viewModel = _db.GetBillForCollection(billId);
-                viewModel.AvailableContainers = _db.GetActiveContainers();
-                return View(viewModel);
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = "Error loading bill details: " + ex.Message;
-                return RedirectToAction("Index");
-            }
-        }
+        //[HttpGet]
+        //public ActionResult CreateCollection(int billId)
+        //{
+        //    try
+        //    {
+        //        var viewModel = _db.GetBillForCollection(billId);
+        //        viewModel.AvailableContainers = _db.GetActiveContainers();
+        //        return View(viewModel);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        TempData["Error"] = "Error loading bill details: " + ex.Message;
+        //        return RedirectToAction("Index");
+        //    }
+        //}
 
         [HttpPost]
         public JsonResult SaveCollection(SampleCollectionModel sampleCollection, List<SampleCollectionDetail> sampleDetails)
         {
             try
             {
+                var currentUser = User?.Identity?.Name;
+                if (!string.IsNullOrWhiteSpace(currentUser))
+                {
+                    sampleCollection.CollectedBy = currentUser;
+                    sampleCollection.CreatedBy = currentUser;
+                }
+
                 var dbResult = _db.SaveSampleCollection(sampleCollection, sampleDetails);
 
                 if (dbResult.Success)
@@ -81,17 +112,17 @@ namespace eMedLis.Controllers
                     collectionBarcode = string.IsNullOrEmpty(c.SampleCollection.CollectionBarcode)
                         ? "New"
                         : c.SampleCollection.CollectionBarcode,
-                    collectionDate = c.SampleCollection.CollectionDate.ToString("dd/MM/yyyy"),
-                    collectionTime = c.SampleCollection.CollectionTime.ToString(@"hh\:mm"),
+                    collectionDate = c.SampleCollection.CollectionDate?.ToString("dd/MM/yyyy"),
+                    collectionTime = c.SampleCollection.CollectionTime?.ToString(@"hh\:mm"),
                     patientName = c.PatientInfo.PatName,
                     uhid = c.PatientInfo.UHID,
                     ageGender = c.PatientInfo.Age + " / " + c.PatientInfo.Gender,
                     mobileNo = c.PatientInfo.MobileNo,
                     billNo = c.BillSummary.BillNo,
-                    billDate = c.BillSummary.BillDate.ToString("dd/MM/yyyy"),
+                    billDate = c.BillSummary.BillDate?.ToString("dd/MM/yyyy hh:mm"),
                     netAmount = c.BillSummary.NetAmount.ToString("F2"),
                     priority = c.SampleCollection.Priority,
-                    status = c.SampleCollection.CollectionStatus,
+                    status = NormalizeStatus(c.SampleCollection.CollectionStatus),
                     homeCollection = c.SampleCollection.HomeCollection,
                     collectedBy = c.SampleCollection.CollectedBy,
                     totalInvestigations = c.TotalInvestigations,
@@ -112,8 +143,72 @@ namespace eMedLis.Controllers
         [HttpGet]
         public ActionResult PrintCollectionLabels(int sampleCollectionId)
         {
-            // Implementation for printing sample labels with barcodes
-            return View();
+            try
+            {
+                if (sampleCollectionId <= 0)
+                    return HttpNotFound("Invalid sample collection id");
+
+                var collection = _db.GetSampleCollectionById(sampleCollectionId);
+                if (collection == null)
+                    return HttpNotFound("Sample collection not found");
+
+                var viewModel = _db.GetBillForCollection(collection.BillSummaryId);
+                if (viewModel == null)
+                    return HttpNotFound("Bill not found for this collection");
+
+                viewModel.SampleCollection = collection;
+                viewModel.SampleDetails = _db.GetSampleDetailsByCollectionId(sampleCollectionId);
+
+                var barcodeMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                if (viewModel.SampleDetails != null)
+                {
+                    foreach (var d in viewModel.SampleDetails)
+                    {
+                        var barcodeText = d.SampleBarcode;
+                        if (!string.IsNullOrWhiteSpace(barcodeText) && !barcodeMap.ContainsKey(barcodeText))
+                        {
+                            barcodeMap[barcodeText] = GenerateLinearBarcode(barcodeText);
+                        }
+                    }
+                }
+
+                ViewBag.SampleBarcodes = barcodeMap;
+                return View("PrintCollectionLabels", viewModel);
+            }
+            catch (Exception ex)
+            {
+                return Content("Error generating labels: " + ex.Message);
+            }
+        }
+
+        private string GenerateLinearBarcode(string text)
+        {
+            try
+            {
+                var writer = new BarcodeWriter
+                {
+                    Format = BarcodeFormat.CODE_128,
+                    Options = new EncodingOptions
+                    {
+                        Width = 420,
+                        Height = 90,
+                        Margin = 2,
+                        PureBarcode = true
+                    }
+                };
+
+                using (var bitmap = writer.Write(text))
+                using (var stream = new MemoryStream())
+                {
+                    bitmap.Save(stream, ImageFormat.Png);
+                    var imageBytes = stream.ToArray();
+                    return "data:image/png;base64," + Convert.ToBase64String(imageBytes);
+                }
+            }
+            catch
+            {
+                return "";
+            }
         }
         [HttpGet]
         public JsonResult GetCollectionData(int? billId)
@@ -136,7 +231,8 @@ namespace eMedLis.Controllers
                 var existingCollection = _db.GetSampleCollectionByBillId(billId.Value);
                 int sampleCollectionId = existingCollection?.SampleCollectionId ?? 0;
                 string collectionBarcode = existingCollection?.CollectionBarcode ?? "";
-                string collectionStatus = existingCollection?.CollectionStatus ?? "New";
+                string collectionStatus = NormalizeStatus(existingCollection?.CollectionStatus ?? "New");
+                string collectedBy = existingCollection?.CollectedBy ?? (User?.Identity?.Name ?? "");
 
                 return Json(new
                 {
@@ -145,15 +241,16 @@ namespace eMedLis.Controllers
                     {
                         billSummaryId = viewModel.BillSummary.BillSummaryId,
                         billNo = viewModel.BillSummary.BillNo,
-                        billDate = viewModel.BillSummary.BillDate.ToString("dd/MM/yyyy"),
+                        billDate = viewModel.BillSummary.BillDate?.ToString("dd/MM/yyyy HH:mm"),
                         netAmount = viewModel.BillSummary.NetAmount.ToString("F2"),
 
                         // Include existing collection info if available
                         sampleCollectionId = sampleCollectionId,
                         collectionBarcode = collectionBarcode,
                         collectionStatus = collectionStatus,
-                        collectionDate = existingCollection?.CollectionDate.ToString("dd/MM/yyyy"),
-                        collectionTime = existingCollection?.CollectionTime.ToString(@"hh\:mm"),
+                        collectionDate = existingCollection?.CollectionDate?.ToString("dd/MM/yyyy"),
+                        collectionTime = existingCollection?.CollectionTime?.ToString(@"hh\:mm"),
+                        collectedBy = collectedBy,
 
                         patientInfo = new
                         {
@@ -175,8 +272,14 @@ namespace eMedLis.Controllers
                             specimenType = d.SpecimenType ?? "Serum",
                             containerType = d.ContainerType ?? "Plain Vacutainer",
                             fastingRequired = d.FastingRequired,
-                            specialInstructions = d.SpecialInstructions
-                        }).ToList()
+                            specialInstructions = d.SpecialInstructions,
+                            samplestatus = d.SampleStatus,
+                            samplecollectionid = d.SampleCollectionId,
+                            collectiondate = d.CollectionDate.HasValue ? d.CollectionDate.Value.ToString("dd/MM/yyyy") : "",
+                            collectiontime = d.CollectionTime.HasValue ? d.CollectionTime.Value.ToString(@"hh\:mm") : "",
+                            collectedQuantity = d.CollectedQuantity,
+                            rejectreason = d.RejectionReason,
+                        }).ToList(),
                     }
                 }, JsonRequestBehavior.AllowGet);
             }
@@ -188,88 +291,88 @@ namespace eMedLis.Controllers
         }
 
 
-        [HttpGet]
-        public JsonResult GetCollectionDetails(int? sampleCollectionId = null)
-        {
-            try
-            {
-                // Validate parameter
-                if (!sampleCollectionId.HasValue || sampleCollectionId <= 0)
-                {
-                    System.Diagnostics.Debug.WriteLine("Invalid sampleCollectionId: " + sampleCollectionId);
-                    return Json(new { success = false, message = "Invalid Collection ID" }, JsonRequestBehavior.AllowGet);
-                }
+        //[HttpGet]
+        //public JsonResult GetCollectionDetails(int? sampleCollectionId = null)
+        //{
+        //    try
+        //    {
+        //        // Validate parameter
+        //        if (!sampleCollectionId.HasValue || sampleCollectionId <= 0)
+        //        {
+        //            System.Diagnostics.Debug.WriteLine("Invalid sampleCollectionId: " + sampleCollectionId);
+        //            return Json(new { success = false, message = "Invalid Collection ID" }, JsonRequestBehavior.AllowGet);
+        //        }
 
-                System.Diagnostics.Debug.WriteLine("Getting collection details for ID: " + sampleCollectionId);
+        //        System.Diagnostics.Debug.WriteLine("Getting collection details for ID: " + sampleCollectionId);
 
-                var viewModel = _db.GetSampleCollectionDetailsForEdit(sampleCollectionId.Value);
+        //        var viewModel = _db.GetSampleCollectionDetailsForEdit(sampleCollectionId.Value);
 
-                if (viewModel == null)
-                {
-                    return Json(new { success = false, message = "Collection not found" }, JsonRequestBehavior.AllowGet);
-                }
+        //        if (viewModel == null)
+        //        {
+        //            return Json(new { success = false, message = "Collection not found" }, JsonRequestBehavior.AllowGet);
+        //        }
 
-                if (viewModel.SampleCollection == null)
-                {
-                    return Json(new { success = false, message = "Collection master record not found" }, JsonRequestBehavior.AllowGet);
-                }
+        //        if (viewModel.SampleCollection == null)
+        //        {
+        //            return Json(new { success = false, message = "Collection master record not found" }, JsonRequestBehavior.AllowGet);
+        //        }
 
-                // Build sample details list
-                var sampleDetailsArray = new List<object>();
+        //        // Build sample details list
+        //        var sampleDetailsArray = new List<object>();
 
-                if (viewModel.SampleDetails != null && viewModel.SampleDetails.Count > 0)
-                {
-                    foreach (var d in viewModel.SampleDetails)
-                    {
-                        sampleDetailsArray.Add(new
-                        {
-                            sampleDetailId = d.SampleDetailId,
-                            invMasterId = d.InvMasterId,
-                            investigationName = d.InvestigationName,
-                            sampleStatus = d.SampleStatus ?? "Pending",
-                            collectedQuantity = d.CollectedQuantity,
-                            rejectionReason = d.RejectionReason,
-                            collectionDate = d.CollectionDate.HasValue ? d.CollectionDate.Value.ToString("dd/MM/yyyy") : "",
-                            collectionTime = d.CollectionTime.HasValue ? d.CollectionTime.Value.ToString(@"hh\:mm") : "",
-                            rejectionDate = d.RejectionDate.HasValue ? d.RejectionDate.Value.ToString("dd/MM/yyyy HH:mm") : "",
-                            isCollected = d.SampleStatus == "Collected",
-                            isRejected = d.SampleStatus == "Rejected"
-                        });
-                    }
-                }
+        //        if (viewModel.SampleDetails != null && viewModel.SampleDetails.Count > 0)
+        //        {
+        //            foreach (var d in viewModel.SampleDetails)
+        //            {
+        //                sampleDetailsArray.Add(new
+        //                {
+        //                    sampleDetailId = d.SampleDetailId,
+        //                    invMasterId = d.InvMasterId,
+        //                    investigationName = d.InvestigationName,
+        //                    sampleStatus = d.SampleStatus ?? "Pending",
+        //                    collectedQuantity = d.CollectedQuantity,
+        //                    rejectionReason = d.RejectionReason,
+        //                    collectionDate = d.CollectionDate.HasValue ? d.CollectionDate.Value.ToString("dd/MM/yyyy") : "",
+        //                    collectionTime = d.CollectionTime.HasValue ? d.CollectionTime.Value.ToString(@"hh\:mm") : "",
+        //                    rejectionDate = d.RejectionDate.HasValue ? d.RejectionDate.Value.ToString("dd/MM/yyyy HH:mm") : "",
+        //                    isCollected = d.SampleStatus == "Collected",
+        //                    isRejected = d.SampleStatus == "Rejected"
+        //                });
+        //            }
+        //        }
 
-                System.Diagnostics.Debug.WriteLine("Returning " + sampleDetailsArray.Count + " sample details");
+        //        System.Diagnostics.Debug.WriteLine("Returning " + sampleDetailsArray.Count + " sample details");
 
-                return Json(new
-                {
-                    success = true,
-                    data = new
-                    {
-                        sampleCollectionId = viewModel.SampleCollection.SampleCollectionId,
-                        collectionBarcode = viewModel.SampleCollection.CollectionBarcode ?? "",
-                        collectionDate = viewModel.SampleCollection.CollectionDate.ToString("dd/MM/yyyy"),
-                        collectionTime = viewModel.SampleCollection.CollectionTime.ToString(@"hh\:mm"),
-                        collectedBy = viewModel.SampleCollection.CollectedBy ?? "Admin",
-                        priority = viewModel.SampleCollection.Priority ?? "Normal",
-                        remarks = viewModel.SampleCollection.Remarks ?? "",
-                        homeCollection = viewModel.SampleCollection.HomeCollection,
-                        patientAddress = viewModel.SampleCollection.PatientAddress ?? "",
-                        sampleDetails = sampleDetailsArray
-                    }
-                }, JsonRequestBehavior.AllowGet);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine("GetCollectionDetails Error: " + ex.Message);
-                System.Diagnostics.Debug.WriteLine("Stack: " + ex.StackTrace);
+        //        return Json(new
+        //        {
+        //            success = true,
+        //            data = new
+        //            {
+        //                sampleCollectionId = viewModel.SampleCollection.SampleCollectionId,
+        //                collectionBarcode = viewModel.SampleCollection.CollectionBarcode ?? "",
+        //                collectionDate = viewModel.SampleCollection.CollectionDate?.ToString("dd/MM/yyyy"),
+        //                collectionTime = viewModel.SampleCollection.CollectionTime?.ToString(@"hh\:mm"),
+        //                collectedBy = viewModel.SampleCollection.CollectedBy ?? "Admin",
+        //                priority = viewModel.SampleCollection.Priority ?? "Normal",
+        //                remarks = viewModel.SampleCollection.Remarks ?? "",
+        //                homeCollection = viewModel.SampleCollection.HomeCollection,
+        //                patientAddress = viewModel.SampleCollection.PatientAddress ?? "",
+        //                sampleDetails = sampleDetailsArray
+        //            }
+        //        }, JsonRequestBehavior.AllowGet);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        System.Diagnostics.Debug.WriteLine("GetCollectionDetails Error: " + ex.Message);
+        //        System.Diagnostics.Debug.WriteLine("Stack: " + ex.StackTrace);
 
-                return Json(new
-                {
-                    success = false,
-                    message = "Error: " + ex.Message
-                }, JsonRequestBehavior.AllowGet);
-            }
-        }
+        //        return Json(new
+        //        {
+        //            success = false,
+        //            message = "Error: " + ex.Message
+        //        }, JsonRequestBehavior.AllowGet);
+        //    }
+        //}
 
 
 

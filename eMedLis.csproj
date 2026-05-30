@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="packages\EntityFramework.6.5.1\build\EntityFramework.props" Condition="Exists('packages\EntityFramework.6.5.1\build\EntityFramework.props')" />
   <Import Project="packages\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.2.0.1\build\net46\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.props" Condition="Exists('packages\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.2.0.1\build\net46\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.props')" />
-  <Import Project="packages\EntityFramework.6.4.4\build\EntityFramework.props" Condition="Exists('packages\EntityFramework.6.4.4\build\EntityFramework.props')" />
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -46,6 +46,18 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <HintPath>packages\EntityFramework.6.5.1\lib\net45\EntityFramework.dll</HintPath>
+    </Reference>
+    <Reference Include="EntityFramework.SqlServer, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <HintPath>packages\EntityFramework.6.5.1\lib\net45\EntityFramework.SqlServer.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.AspNet.Identity.Core, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.AspNet.Identity.Core.2.2.4\lib\net45\Microsoft.AspNet.Identity.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.AspNet.Identity.Owin, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.AspNet.Identity.Owin.2.2.4\lib\net45\Microsoft.AspNet.Identity.Owin.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.Bcl.AsyncInterfaces, Version=8.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>packages\Microsoft.Bcl.AsyncInterfaces.8.0.0\lib\net462\Microsoft.Bcl.AsyncInterfaces.dll</HintPath>
     </Reference>
@@ -196,18 +208,6 @@
     <Reference Include="System.Web.Http.WebHost">
       <HintPath>packages\Microsoft.AspNet.WebApi.WebHost.5.2.9\lib\net45\System.Web.Http.WebHost.dll</HintPath>
     </Reference>
-    <Reference Include="EntityFramework">
-      <HintPath>packages\EntityFramework.6.4.4\lib\net45\EntityFramework.dll</HintPath>
-    </Reference>
-    <Reference Include="EntityFramework.SqlServer">
-      <HintPath>packages\EntityFramework.6.4.4\lib\net45\EntityFramework.SqlServer.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.AspNet.Identity.Core">
-      <HintPath>packages\Microsoft.AspNet.Identity.Core.2.2.3\lib\net45\Microsoft.AspNet.Identity.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.AspNet.Identity.Owin">
-      <HintPath>packages\Microsoft.AspNet.Identity.Owin.2.2.3\lib\net45\Microsoft.AspNet.Identity.Owin.dll</HintPath>
-    </Reference>
     <Reference Include="Microsoft.AspNet.Identity.EntityFramework">
       <HintPath>packages\Microsoft.AspNet.Identity.EntityFramework.2.2.3\lib\net45\Microsoft.AspNet.Identity.EntityFramework.dll</HintPath>
     </Reference>
@@ -246,17 +246,32 @@
     <Compile Include="Controllers\AccountController.cs" />
     <Compile Include="Controllers\Api\AuthController.cs" />
     <Compile Include="Controllers\DepartmentController.cs" />
+    <Compile Include="Controllers\DoctorMasterController.cs" />
     <Compile Include="Controllers\DuePaymentController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\InvestigationController.cs" />
+    <Compile Include="Controllers\InvestigationTemplateController.cs" />
+    <Compile Include="Controllers\LabMasterController.cs" />
     <Compile Include="Controllers\LookupController.cs" />
     <Compile Include="Controllers\ManageController.cs" />
+    <Compile Include="Controllers\PackageMasterController.cs" />
+    <Compile Include="Controllers\ParameterHeaderController.cs" />
+    <Compile Include="Controllers\ParameterMasterController.cs" />
+    <Compile Include="Controllers\ReferenceRangeController.cs" />
+    <Compile Include="Controllers\ReportAuthorizationController.cs" />
+    <Compile Include="Controllers\ReportPrintController.cs" />
+    <Compile Include="Controllers\ReportSettingsController.cs" />
+    <Compile Include="Controllers\TestMethodController.cs" />
     <Compile Include="Controllers\PatientBillingController.cs" />
+    <Compile Include="Controllers\ReportEntryController.cs" />
     <Compile Include="Controllers\SampleCollectionController.cs" />
     <Compile Include="Controllers\SubDepartmentController.cs" />
-    <Compile Include="Controllers\TestController.cs" />
     <Compile Include="DAL\AuditDAL.cs" />
     <Compile Include="DAL\PatientBilling\PatientBillingDB.cs" />
+    <Compile Include="DAL\ReportAuthorization\ReportAuthorizationDB.cs" />
+    <Compile Include="DAL\ReportPrint\ReportPrintDB.cs" />
+    <Compile Include="DAL\ReportSettings\ReportSettingsDB.cs" />
+    <Compile Include="DAL\ReportEntry\ReportEntryDB.cs" />
     <Compile Include="DAL\SampleCollection\SampleCollectionDB.cs" />
     <Compile Include="DAL\UserDAL.cs" />
     <Compile Include="Global.asax.cs">
@@ -266,14 +281,46 @@
     <Compile Include="Models\AuthModels.cs" />
     <Compile Include="Models\Department.cs" />
     <Compile Include="Models\DepartmentDB.cs" />
+    <Compile Include="Models\DoctorMaster.cs" />
+    <Compile Include="Models\DoctorMasterDB.cs" />
     <Compile Include="Models\IdentityModels.cs" />
     <Compile Include="Models\InvMaster.cs" />
     <Compile Include="Models\InvMasterDB.cs" />
+    <Compile Include="Models\InvestigationTemplateBatch.cs" />
+    <Compile Include="Models\InvestigationTemplateDB.cs" />
+    <Compile Include="Models\InvestigationTemplateItem.cs" />
     <Compile Include="Models\JwtTokenHandler.cs" />
+    <Compile Include="Models\LabMaster.cs" />
+    <Compile Include="Models\LabMasterDB.cs" />
     <Compile Include="Models\Lookup.cs" />
     <Compile Include="Models\LookupDB.cs" />
     <Compile Include="Models\ManageViewModels.cs" />
+    <Compile Include="Models\PackageMaster.cs" />
+    <Compile Include="Models\PackageMasterDB.cs" />
     <Compile Include="Models\PasswordHasher.cs" />
+    <Compile Include="Models\ParameterHeader.cs" />
+    <Compile Include="Models\ParameterHeaderDB.cs" />
+    <Compile Include="Models\ParameterMaster.cs" />
+    <Compile Include="Models\ParameterDropdownSaveRequest.cs" />
+    <Compile Include="Models\ParameterDropdownValue.cs" />
+    <Compile Include="Models\ParameterMasterDB.cs" />
+    <Compile Include="Models\ReferenceRange.cs" />
+    <Compile Include="Models\ReferenceRangeBatch.cs" />
+    <Compile Include="Models\ReferenceRangeCombo.cs" />
+    <Compile Include="Models\ReferenceRangeDB.cs" />
+    <Compile Include="Models\ReportAuthorization\ReportAuthorizationListItem.cs" />
+    <Compile Include="Models\ReportAuthorization\ReportAuthorizationReviewModels.cs" />
+    <Compile Include="Models\ReportPrint\ReportPrintModels.cs" />
+    <Compile Include="Models\ReportPrint\ReportPreviewModels.cs" />
+    <Compile Include="Models\ReportSettings\ReportLayoutSettings.cs" />
+    <Compile Include="Models\ReportEntry\ReportEntryInvestigationItem.cs" />
+    <Compile Include="Models\ReportEntry\ReportEntryRangeItem.cs" />
+    <Compile Include="Models\ReportEntry\ReportEntrySaveRequest.cs" />
+    <Compile Include="Models\ReportEntry\ReportEntrySearchResult.cs" />
+    <Compile Include="Models\ReportEntry\ReportEntrySavedResultItem.cs" />
+    <Compile Include="Models\ReportEntry\ReportEntryTemplateResponse.cs" />
+    <Compile Include="Models\TestMethod.cs" />
+    <Compile Include="Models\TestMethodDB.cs" />
     <Compile Include="Models\PatientBilling\BillDetail.cs" />
     <Compile Include="Models\PatientBilling\BillListItem.cs" />
     <Compile Include="Models\PatientBilling\BillListResponse.cs" />
@@ -297,8 +344,24 @@
     <Content Include="App_Assets\css\custom\custom.css" />
     <Content Include="App_Assets\js\custom\custom-script.min.js" />
     <Content Include="App_Assets\js\Department\Department.js" />
+    <Content Include="App_Assets\js\DoctorMaster\DoctorMaster.js" />
     <Content Include="App_Assets\js\InvMaster\InvMaster.js" />
+    <Content Include="App_Assets\js\InvestigationTemplate\InvestigationTemplate.js" />
+    <Content Include="App_Assets\js\LabMaster\LabMaster.js" />
+    <Content Include="App_Assets\js\PackageMaster\PackageMaster.js" />
+    <Content Include="App_Assets\js\ParameterMaster\ParameterMaster.js" />
+    <Content Include="App_Assets\js\ParameterHeader\ParameterHeader.js" />
+    <Content Include="App_Assets\js\ReportAuthorization\ReportAuthorizationList.js" />
+    <Content Include="App_Assets\js\ReportAuthorization\ReportAuthorizationReview.js" />
+    <Content Include="App_Assets\js\ReportPrint\ReportPrintEntry.js" />
+    <Content Include="App_Assets\js\ReportPrint\ReportPrintList.js" />
+    <Content Include="App_Assets\js\ReportSettings\ReportSettings.js" />
+    <Content Include="App_Assets\js\ReferenceRange\ReferenceRange.js" />
+    <Content Include="App_Assets\js\TestMethod\TestMethod.js" />
     <Content Include="App_Assets\js\PatientBilling\PatientBilling.js" />
+    <Content Include="App_Assets\js\ReportEntry\ReportEntry.js" />
+    <Content Include="App_Assets\js\ReportEntry\ReportEntryEntry.js" />
+    <Content Include="App_Assets\js\ReportEntry\ReportEntryList.js" />
     <Content Include="App_Assets\js\SampleCollection\SampleCollection.js" />
     <Content Include="App_Assets\js\SampleCollection\SampleCollectionDashboard.js" />
     <Content Include="App_Assets\js\Specimen\Specimen.js" />
@@ -327,6 +390,7 @@
     <Content Include="Content\Images\user2-160x160.jpg" />
     <Content Include="Content\Images\user3-128x128.jpg" />
     <Content Include="Content\Images\user8-128x128.jpg" />
+    <Content Include="Documentation\ReportResult.sql" />
     <Content Include="favicon.ico" />
     <Content Include="Global.asax" />
     <Content Include="Content\Site.css" />
@@ -586,12 +650,40 @@
     <Content Include="Views\Department\Index.cshtml" />
     <Content Include="Views\SubDepartment\Index.cshtml" />
     <Content Include="Views\Investigation\Index.cshtml" />
+    <Content Include="Views\InvestigationTemplate\Index.cshtml" />
+    <Content Include="Views\LabMaster\Index.cshtml" />
     <Content Include="Views\Lookup\Specimen.cshtml" />
     <Content Include="Views\Lookup\Vacutainer.cshtml" />
+    <Content Include="Views\PackageMaster\Index.cshtml" />
+    <Content Include="Views\ParameterHeader\Index.cshtml" />
+    <Content Include="Views\ParameterMaster\Index.cshtml" />
+    <Content Include="Views\ReferenceRange\Index.cshtml" />
+    <Content Include="Views\ReportEntry\Index.cshtml" />
+    <Content Include="Views\ReportEntry\Entry.cshtml" />
+    <Content Include="Views\ReportAuthorization\Index.cshtml" />
+    <Content Include="Views\ReportAuthorization\Review.cshtml" />
+    <Content Include="Views\ReportPrint\Entry.cshtml" />
+    <Content Include="Views\ReportPrint\Index.cshtml" />
+    <Content Include="Views\ReportSettings\Index.cshtml" />
+    <Content Include="Views\TestMethod\Index.cshtml" />
+    <Content Include="Views\DoctorMaster\Index.cshtml" />
     <Content Include="Views\PatientBilling\Index.cshtml" />
     <Content Include="Views\DuePayment\Index.cshtml" />
     <Content Include="Views\SampleCollection\Index.cshtml" />
     <Content Include="Views\SampleCollection\CreateCollection.cshtml" />
+    <Content Include="Documentation\ParameterHeader.sql" />
+    <Content Include="Documentation\ParameterMaster.sql" />
+    <Content Include="Documentation\ReferenceRange.sql" />
+    <Content Include="Documentation\ReportEntry.sql" />
+    <Content Include="Documentation\TestMethod.sql" />
+    <Content Include="Documentation\InvestigationTemplate.sql" />
+    <Content Include="Documentation\LabMaster.sql" />
+    <Content Include="Documentation\PackageBilling.sql" />
+    <Content Include="Documentation\PackageMaster.sql" />
+    <Content Include="Documentation\DoctorMaster.sql" />
+    <Content Include="Documentation\ReportAuthorization.sql" />
+    <Content Include="Documentation\ReportPrint.sql" />
+    <Content Include="Documentation\ReportSettings.sql" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
@@ -653,15 +745,15 @@
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
-    <Error Condition="!Exists('packages\EntityFramework.6.4.4\build\EntityFramework.props')" Text="$([System.String]::Format('$(ErrorText)', 'packages\EntityFramework.6.4.4\build\EntityFramework.props'))" />
-    <Error Condition="!Exists('packages\EntityFramework.6.4.4\build\EntityFramework.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\EntityFramework.6.4.4\build\EntityFramework.targets'))" />
     <Error Condition="!Exists('packages\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.2.0.1\build\net46\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.props')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.2.0.1\build\net46\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.props'))" />
+    <Error Condition="!Exists('packages\EntityFramework.6.5.1\build\EntityFramework.props')" Text="$([System.String]::Format('$(ErrorText)', 'packages\EntityFramework.6.5.1\build\EntityFramework.props'))" />
+    <Error Condition="!Exists('packages\EntityFramework.6.5.1\build\EntityFramework.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\EntityFramework.6.5.1\build\EntityFramework.targets'))" />
   </Target>
-  <Import Project="packages\EntityFramework.6.4.4\build\EntityFramework.targets" Condition="Exists('packages\EntityFramework.6.4.4\build\EntityFramework.targets')" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
   </Target>
   <Target Name="AfterBuild">
   </Target> -->
+  <Import Project="packages\EntityFramework.6.5.1\build\EntityFramework.targets" Condition="Exists('packages\EntityFramework.6.5.1\build\EntityFramework.targets')" />
 </Project>

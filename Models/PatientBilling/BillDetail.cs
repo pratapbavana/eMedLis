@@ -1,4 +1,6 @@
-﻿using System;
+﻿using eMedLis.Models.SampleCollection;
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -34,9 +36,22 @@ namespace eMedLis.Models.PatientBilling
 
         [Column(TypeName = "decimal(18, 2)")]
         public decimal NetAmount { get; set; }
+        public bool IsFromPackage { get; set; }
+        public int? PackageId { get; set; }
+        public string ParentPackageCode { get; set; }
+        public string ParentPackageName { get; set; }
+        [Column(TypeName = "decimal(18, 2)")]
+        public decimal PackagePrice { get; set; }
+        public bool IsPackageChargeOwner { get; set; }
         public string SpecimenType { get; set; }
         public string ContainerType { get; set; }
         public bool FastingRequired { get; set; }
         public string SpecialInstructions { get; set; }
+        public int SampleCollectionId { get; set; }
+        public string SampleStatus { get; set; }
+        public DateTime? CollectionDate { get; set; }  
+        public TimeSpan? CollectionTime { get; set; }
+        public string CollectedQuantity { get; set; }
+        public string RejectionReason { get; set; }
     }
 }

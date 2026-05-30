@@ -1,0 +1,89 @@
+@{
+    ViewBag.Title = "Report Entry";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section Scripts {
+    <script>
+        var reportEntrySampleCollectionId = @ViewBag.SampleCollectionId;
+    </script>
+    @Scripts.Render("~/App_Assets/js/ReportEntry/ReportEntryEntry.js")
+}
+
+<div class="container-fluid mt-3">
+    <div class="card card-primary card-outline">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title text-lg font-weight-bold mb-0">
+                <i class="fas fa-file-medical mr-2 text-primary"></i>Report Entry - Investigation Selection
+            </h3>
+            <a class="btn btn-sm btn-secondary ml-auto" href="@Url.Action("Index", "ReportEntry")">Back to Bill List</a>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Bill No:</strong> <span id="osBillNo">-</span></div>
+                <div class="col-md-4"><strong>Patient:</strong> <span id="osPatientName">-</span></div>
+                <div class="col-md-4"><strong>UHID:</strong> <span id="osUhid">-</span></div>
+                <div class="col-md-4"><strong>Age/Gender:</strong> <span id="osAgeGender">-</span></div>
+                <div class="col-md-4"><strong>Mobile:</strong> <span id="osMobile">-</span></div>
+                <div class="col-md-4"><strong>Collection Barcode:</strong> <span id="osCollectionBarcode">-</span></div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card card-outline card-secondary">
+                        <div class="card-header">
+                            <h5 class="card-title">Investigations</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm" id="investigationsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Investigation</th>
+                                        <th>Sample ID</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-8">
+                    <div class="card card-outline card-secondary">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">Template</h5>
+                            <div><strong>Status:</strong> <span id="resultStatusBadge" class="badge badge-secondary">-</span></div>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-light border mb-3 py-2">
+                                <strong>Current Investigation:</strong> <span id="ciInvestigation">-</span>
+                                <span class="ml-3"><strong>Sample ID:</strong> <span id="ciSampleId">-</span></span>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered" id="templateGrid">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 30%;">Parameter</th>
+                                            <th style="width: 18%;">Method</th>
+                                            <th style="width: 18%;">Result</th>
+                                            <th style="width: 10%;">Unit</th>
+                                            <th style="width: 14%;">Normal Range</th>
+                                            <th style="width: 10%;">Flag</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                            <div class="text-right mt-3">
+                                <button type="button" class="btn btn-outline-primary btn-sm" id="btnSaveDraft">Save Draft</button>
+                                <button type="button" class="btn btn-primary btn-sm" id="btnSubmitAuthorization">Submit for Authorization</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>

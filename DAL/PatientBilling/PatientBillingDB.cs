@@ -97,6 +97,12 @@ namespace eMedLis.DAL.PatientBilling
                 cmd.Parameters.AddWithValue("@DiscountAmount", detail.DiscountAmount);
                 cmd.Parameters.AddWithValue("@DiscountPercent", detail.DiscountPercent);
                 cmd.Parameters.AddWithValue("@NetAmount", detail.NetAmount);
+                cmd.Parameters.AddWithValue("@IsFromPackage", detail.IsFromPackage);
+                cmd.Parameters.AddWithValue("@PackageId", (object)detail.PackageId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ParentPackageCode", (object)detail.ParentPackageCode ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ParentPackageName", (object)detail.ParentPackageName ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@PackagePrice", detail.PackagePrice);
+                cmd.Parameters.AddWithValue("@IsPackageChargeOwner", detail.IsPackageChargeOwner);
                 cmd.ExecuteNonQuery();
             }
         }
@@ -292,7 +298,13 @@ namespace eMedLis.DAL.PatientBilling
                                         Rate = Convert.ToDecimal(reader["Rate"]),
                                         DiscountAmount = Convert.ToDecimal(reader["DiscountAmount"]),
                                         DiscountPercent = Convert.ToDecimal(reader["DiscountPercent"]),
-                                        NetAmount = Convert.ToDecimal(reader["NetAmount"])
+                                        NetAmount = Convert.ToDecimal(reader["NetAmount"]),
+                                        IsFromPackage = HasColumn(reader, "IsFromPackage") && Convert.ToBoolean(reader["IsFromPackage"]),
+                                        PackageId = HasColumn(reader, "PackageId") && reader["PackageId"] != DBNull.Value ? (int?)Convert.ToInt32(reader["PackageId"]) : null,
+                                        ParentPackageCode = HasColumn(reader, "ParentPackageCode") ? Convert.ToString(reader["ParentPackageCode"]) : null,
+                                        ParentPackageName = HasColumn(reader, "ParentPackageName") ? Convert.ToString(reader["ParentPackageName"]) : null,
+                                        PackagePrice = HasColumn(reader, "PackagePrice") && reader["PackagePrice"] != DBNull.Value ? Convert.ToDecimal(reader["PackagePrice"]) : 0,
+                                        IsPackageChargeOwner = HasColumn(reader, "IsPackageChargeOwner") && Convert.ToBoolean(reader["IsPackageChargeOwner"])
                                     });
                                 }
                             }
@@ -532,6 +544,18 @@ namespace eMedLis.DAL.PatientBilling
                 result.Success = true;
             }
             return result;
+        }
+
+        private static bool HasColumn(IDataRecord reader, string columnName)
+        {
+            for (int i = 0; i < reader.FieldCount; i++)
+            {
+                if (reader.GetName(i).Equals(columnName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
         public PaymentReceiptData GetPaymentReceipt(int duePaymentId)
         {

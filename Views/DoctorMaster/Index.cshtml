@@ -1,0 +1,109 @@
+@{
+    ViewBag.Title = "Doctor Master";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section Scripts{
+    @Scripts.Render("~/App_Assets/js/DoctorMaster/DoctorMaster.js")
+}
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card card-primary card-outline">
+            <div class="card-header justify-content-between align-items-center">
+                <div class="col col-sm-10">
+                    <h3 class="card-title text-lg font-weight-bold">
+                        <i class="fas fa-user-md mr-2 text-primary"></i>Doctor Master
+                    </h3>
+                </div>
+                <div class="col col-sm-2 offset-sm-10 text-sm-right">
+                    <button type="button" class="btn btn-blue btn-sm" data-toggle="modal" data-target="#doctor_modal" onclick="return clearDoctorForm();">
+                        Add Doctor
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-bordered table-striped nowrap" style="width:100%" id="doctorTable">
+                    <thead>
+                        <tr>
+                            <th>Serial</th>
+                            <th>Id</th>
+                            <th>Doctor</th>
+                            <th>Designation</th>
+                            <th>Registration No</th>
+                            <th>Sub Departments</th>
+                            <th>Signature</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="doctor_modal">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 id="doctorModalHeader" class="modal-title">Add Doctor</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <input type="hidden" id="DoctorId" value="0" />
+                    <input type="hidden" id="SignatureBase64" value="" />
+
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="UserId">User</label>
+                            <select id="UserId" class="form-control"></select>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="Designation">Designation</label>
+                            <input type="text" id="Designation" class="form-control" maxlength="100" />
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="RegistrationNumber">Registration Number</label>
+                            <input type="text" id="RegistrationNumber" class="form-control" maxlength="50" />
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="SubDepartmentIds">Sub Departments</label>
+                            <select id="SubDepartmentIds" class="form-control" multiple="multiple"></select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="SignatureFile">Signature (PNG/JPG)</label>
+                            <input type="file" id="SignatureFile" class="form-control-file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" />
+                            <small class="form-text text-muted">Recommended 200 x 80 px, max 100 KB. System auto-resizes.</small>
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label>Preview</label>
+                            <div class="border p-1 text-center" style="min-height:90px;">
+                                <img id="SignaturePreview" alt="Signature Preview" style="max-width: 200px; max-height: 80px; display:none;" />
+                                <span id="NoSignatureText" class="text-muted">No Signature</span>
+                            </div>
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label for="DoctorActive">Status</label>
+                            <div class="icheck-success d-block mt-2">
+                                <input type="checkbox" id="DoctorActive" checked="checked" />
+                                <label for="DoctorActive">Active</label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-blue" id="btnDoctorAdd" onclick="return saveDoctor('Add');"><span>Add Doctor</span></button>
+                <button class="btn btn-primary d-none" id="btnDoctorUpdate" onclick="return saveDoctor('Update');"><span>Update Doctor</span></button>
+            </div>
+        </div>
+    </div>
+</div>

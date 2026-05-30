@@ -18,7 +18,7 @@ namespace eMedLis.Models.PatientBilling
         [ForeignKey("PatientInfoId")]
         public virtual PatientInfo PatientInfo { get; set; } // Navigation property
 
-        public DateTime BillDate { get; set; } = DateTime.Now; // Defaults to current date/time
+        public DateTime? BillDate { get; set; } = DateTime.Now; // Defaults to current date/time
 
         [Column(TypeName = "decimal(18, 2)")]
         public decimal TotalBill { get; set; }

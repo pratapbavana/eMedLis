@@ -21,11 +21,15 @@ $(document).ready(function () {
         }
     )
     $('#invtable tbody').on('click', '.delete', function () {
+        var row = $(this).parents('tr');
+        if (row.attr('data-package-parent') === '1') {
+            removePackageRows(row.attr('data-package-id'));
+            return;
+        }
         i
-            .row($(this).parents('tr'))
+            .row(row)
             .remove()
             .draw();
-        // Recalculate and update labels after row deletion
         calculateAndSetSummaryAmounts();
     });
     $('#paymentGrid tbody').on('click', '.btnDelete', function () {
@@ -119,17 +123,23 @@ function SaveBill() {
     var invTable = $("#invtable").DataTable();
     invTable.rows().every(function () {
         var data = this.data();
-        var rowNode = this.node();
+        var rowNode = $(this.node());
+        if (rowNode.attr('data-package-parent') === '1') {
+            return;
+        }
         billDetails.push({
-            // IMPORTANT: Adjust these indices based on the actual order of columns
-            // in your 'invtable' DataTable when rows are added.
-            // My assumption is: [InvCode (hidden), InvName, Rate, DiscountPercent, DiscountAmount, NetAmount, Action]
-            InvId: data[0], // Assuming InvCode is the first (possibly hidden) column
-            InvName: $(rowNode).find("td:nth-child(2)").text(), // Assuming InvName is the second column
-            Rate: parseFloat($(rowNode).find("td:nth-child(3)").text()) || 0,
-            DiscountPercent: parseFloat($(rowNode).find("td:nth-child(4) input[name='DiscountPercent']").val()) || 0,
-            DiscountAmount: parseFloat($(rowNode).find("td:nth-child(4) input[name='DiscountAmount']").val()) || 0,
-            NetAmount: parseFloat($(rowNode).find("td:nth-child(5)").text()) || 0
+            InvId: (data[0] || '').toString(),
+            InvName: rowNode.find("td:nth-child(2)").text().trim(),
+            Rate: parseFloat(rowNode.find("td:nth-child(3)").text()) || 0,
+            DiscountPercent: parseFloat(rowNode.find("td:nth-child(4) input[name='DiscountPercent']").val()) || 0,
+            DiscountAmount: parseFloat(rowNode.find("td:nth-child(4) input[name='DiscountAmount']").val()) || 0,
+            NetAmount: parseFloat(rowNode.find("td:nth-child(5)").text()) || 0,
+            IsFromPackage: rowNode.attr('data-package-child') === '1',
+            PackageId: rowNode.attr('data-package-id') ? parseInt(rowNode.attr('data-package-id'), 10) : null,
+            ParentPackageCode: rowNode.attr('data-package-code') || null,
+            ParentPackageName: rowNode.attr('data-package-name') || null,
+            PackagePrice: parseFloat(rowNode.attr('data-package-price') || '0') || 0,
+            IsPackageChargeOwner: rowNode.attr('data-package-charge-owner') === '1'
         });
     });
 
@@ -202,6 +212,7 @@ function SaveBill() {
 function clearfields() {
     $("#PatList").hide();
     $("#Billing").show();
+    billingPackageState = {};
     $('#header').html("Patient Billing");
     clearPatientForm(true);
     $('#MobileNo').val("");
@@ -226,6 +237,7 @@ function clearfields() {
     $('#Email').removeClass("valid is-invalid");
     $('#Inv').removeClass("valid is-invalid");
     $('#Inv').val(null).trigger("change");
+    $('#Pkg').val(null).trigger("change");
     $("#invtable").DataTable().columns.adjust().draw();
     // Reset summary amounts on clear
     $('#lblTotalBill').text('0.00');
@@ -352,6 +364,114 @@ function refreshBillsGrid() {
 }
 //#endregion
 
+function getExistingInvestigationIds() {
+    var ids = {};
+    var table = $("#invtable").DataTable();
+    table.rows().every(function () {
+        var rowData = this.data();
+        if (!rowData || rowData.length === 0) return;
+        var rowNode = $(this.node());
+        if (rowNode.attr('data-package-parent') === '1') return;
+        var key = (rowData[0] || '').toString().trim();
+        if (key) {
+            ids[key] = true;
+        }
+    });
+    return ids;
+}
+
+function getExistingInvestigationContext(invId) {
+    var context = null;
+    var keyToFind = (invId || '').toString().trim();
+    if (!keyToFind) return null;
+
+    $("#invtable").DataTable().rows().every(function () {
+        var rowData = this.data();
+        if (!rowData || !rowData.length) return;
+        var rowNode = $(this.node());
+        var rowKey = (rowData[0] || '').toString().trim();
+        if (rowKey !== keyToFind) return;
+
+        if (rowNode.attr('data-package-child') === '1') {
+            context = {
+                type: 'package-child',
+                packageId: rowNode.attr('data-package-id') || '',
+                packageName: rowNode.attr('data-package-name') || 'Package'
+            };
+            return false;
+        }
+
+        if (rowNode.attr('data-package-parent') !== '1') {
+            context = { type: 'individual' };
+            return false;
+        }
+    });
+
+    return context;
+}
+
+function htmlEncode(value) {
+    return $('<div/>').text(value == null ? '' : value).html();
+}
+
+function addInvestigationRows(items, sourceLabel) {
+    var list = items || [];
+    if (!list.length) {
+        return { added: 0, skipped: [] };
+    }
+
+    var table = $("#invtable").DataTable();
+    var existing = getExistingInvestigationIds();
+    var skipped = [];
+    var added = 0;
+
+    for (var i = 0; i < list.length; i++) {
+        var item = list[i] || {};
+        var invId = (item.Id || item.InvId || '').toString().trim();
+        if (!invId) continue;
+
+        if (existing[invId]) {
+            var existingContext = getExistingInvestigationContext(invId);
+            var invLabel = item.InvName || item.Name || ('Investigation ' + invId);
+            if (existingContext && existingContext.type === 'package-child') {
+                skipped.push(invLabel + ' (already included in package: ' + existingContext.packageName + ')');
+            } else {
+                skipped.push(invLabel);
+            }
+            continue;
+        }
+
+        var invName = item.InvName || item.Name || '-';
+        var invCode = item.InvCode || '';
+        var rate = parseFloat(item.Rate || 0) || 0;
+
+        var rowNode = table.row.add([
+            invId,
+            invCode,
+            '<div class="text-wrap">' + invName + '</div>',
+            rate.toFixed(2),
+            '<div style="display: flex;"> <input class="form-control form-control-sm" type="number" id="DiscountAmount" style="flex: 1;" name="DiscountAmount" placeholder="Rs 0.00"> <input class="form-control form-control-sm" type="number" id="DiscountPercent" style="flex: 1;" name="DiscountPercent" placeholder="0%"> </div>',
+            rate.toFixed(2),
+            '<a href="#"><i class="fa fa-trash fa-sm delete" style="color: #ad0000;"></i></a>'
+        ]).draw(false).node();
+
+        $(rowNode).find('td').eq(4).addClass('indigo-text right-align');
+        existing[invId] = true;
+        added++;
+    }
+
+    if (added > 0) {
+        calculateAndSetSummaryAmounts();
+    }
+
+    if (skipped.length > 0) {
+        var prefix = sourceLabel ? (sourceLabel + ': ') : '';
+        toastr.warning(prefix + skipped.length + ' investigation(s) already added, skipped. ' + skipped.join(', '));
+    }
+
+    return { added: added, skipped: skipped };
+}
+
 // #region Add inv to List
 function addinvtolist(Id) {
     if (!Id) {
@@ -363,40 +483,14 @@ function addinvtolist(Id) {
         contentType: "application/json;charset=UTF-8",
         dataType: "json",
         success: function (result) {
-            var i = $("#invtable").DataTable()
-            var idx = -1; // Default to not found
-            i.rows().every(function () {
-                var rowData = this.data();
-                if (parseInt(rowData[0]) === parseInt(Id)) {
-                    idx = 0; // Found duplicate
-                    return false; // Break the loop
-                }
-            });
-
-            if (idx === -1) {
-                var SelectedInvId = Id
-                var i = $("#invtable").DataTable()
-                var rowNode = i.row.add([
-                    SelectedInvId,
-                    result[0].InvCode,
-                    '<div class="text-wrap">' + result[0].InvName + '</div>',
-                    result[0].Rate.toFixed(2), // Ensure rate is formatted as number
-                    '<div style="display: flex;"> <input class="form-control form-control-sm" type="number" id="DiscountAmount" style="flex: 1;" name="DiscountAmount" placeholder="Rs 0.00"> <input class="form-control form-control-sm" type="number" id="DiscountPercent" style="flex: 1;" name="DiscountPercent" placeholder="0%"> </div>',
-                    result[0].Rate.toFixed(2), // Net Amount initially same as Rate
-                    '<a href="#"><i class="fa fa-trash fa-sm delete" style="color: #ad0000;"></i></a>'
-                ]).draw()
-                    .node();
-                $(rowNode).find('td').eq(4).addClass('indigo-text right-align'); // No change here, this is for visual alignment
-
-                // Recalculate and update labels after adding a new row
-                calculateAndSetSummaryAmounts();
-
+            if (!result || !result.length) {
+                toastr.error('Investigation not found');
                 $('#Inv').val(null).trigger("change");
+                return;
             }
-            else {
-                toastr.error('Test already added!');
-                $('#Inv').val(null).trigger("change");
-            }
+
+            addInvestigationRows([result[0]], '');
+            $('#Inv').val(null).trigger("change");
         },
         error: function (errormessage) {
             alert(errormessage.responseText);
@@ -489,6 +583,7 @@ function validate() {
 // #endregion
 
 // #region Investigation Dropdown
+var billingPackageState = {};
 $(document).ready(function () {
     $.ajax({
         url: '/Investigation/List',
@@ -515,6 +610,219 @@ $(document).ready(function () {
     });
 });
 // #endregion
+
+// #region Package Dropdown
+$(document).ready(function () {
+    initPackageSelect([]);
+    loadPackageDropdown();
+});
+
+function initPackageSelect(data) {
+    var ddl = $(".pkgsearch");
+    ddl.off('change');
+    if (ddl.hasClass('select2-hidden-accessible')) {
+        ddl.select2('destroy');
+    }
+
+    ddl.empty();
+    ddl.select2({
+        data: data || [],
+        width: "100%",
+        placeholder: 'Select Package',
+        allowClear: true
+    });
+
+    ddl.on('change', function () {
+        const selectedId = $(this).val();
+        if (!selectedId) return;
+        const selectedData = $(this).select2('data');
+        const packageName = selectedData && selectedData.length ? (selectedData[0].packageName || selectedData[0].text) : 'Package';
+        addpackagetolist(selectedId, packageName);
+    });
+}
+
+function loadPackageDropdown() {
+    $.ajax({
+        url: '/PackageMaster/ActiveList',
+        type: 'GET',
+        dataType: 'json',
+        success: function (data) {
+            bindPackageDropdown(data || [], false);
+        },
+        error: function (xhr) {
+            $.ajax({
+                url: '/PackageMaster/List',
+                type: 'GET',
+                dataType: 'json',
+                success: function (data) {
+                    var filtered = (data || []).filter(function (x) { return x.Active === true; });
+                    bindPackageDropdown(filtered, true);
+                },
+                error: function (fallbackXhr) {
+                    initPackageSelect([]);
+                    toastr.error('Failed to load package list (' + (xhr.status || fallbackXhr.status || 0) + ')');
+                    if (window.console) {
+                        console.error('Package list load failed', xhr, fallbackXhr);
+                    }
+                }
+            });
+        }
+    });
+}
+
+function bindPackageDropdown(data, usedFallback) {
+    const formattedData = (data || []).map(item => ({
+        id: item.Id,
+        text: item.PackageName + (item.PackageCode ? ' (' + item.PackageCode + ')' : ''),
+        packageName: item.PackageName,
+        packageCode: item.PackageCode || '',
+        price: parseFloat(item.Price || 0) || 0
+    }));
+    initPackageSelect(formattedData);
+    if (!formattedData.length) {
+        toastr.info('No active packages available');
+    } else if (usedFallback) {
+        toastr.info('Package list loaded using fallback endpoint');
+    }
+}
+
+function addpackagetolist(packageId, packageName) {
+    if (!packageId) return;
+    if (billingPackageState[(packageId || '').toString()]) {
+        toastr.warning('Package already added');
+        $('#Pkg').val(null).trigger("change");
+        return;
+    }
+
+    $.ajax({
+        url: "/PackageMaster/GetPackageInvestigations/" + packageId,
+        type: "GET",
+        contentType: "application/json;charset=UTF-8",
+        dataType: "json",
+        success: function (result) {
+            var list = result || [];
+            if (!list.length) {
+                toastr.warning('No investigations found in selected package');
+                $('#Pkg').val(null).trigger("change");
+                return;
+            }
+
+            addPackageWithChildren(packageId, packageName || 'Package', list);
+            $('#Pkg').val(null).trigger("change");
+        },
+        error: function () {
+            toastr.error('Failed to load package investigations');
+            $('#Pkg').val(null).trigger("change");
+        }
+    });
+}
+// #endregion
+
+function addPackageWithChildren(packageId, packageName, items) {
+    var packageMeta = getPackageDropdownMeta(packageId);
+    var packageKey = (packageId || '').toString();
+    var packageCode = packageMeta.packageCode || ('PKG' + packageKey);
+    var packagePrice = packageMeta.price;
+    var table = $("#invtable").DataTable();
+    var existing = getExistingInvestigationIds();
+    var skipped = [];
+    var children = [];
+
+    for (var i = 0; i < (items || []).length; i++) {
+        var item = items[i] || {};
+        var invId = (item.Id || item.InvId || '').toString().trim();
+        if (!invId) continue;
+        if (existing[invId]) {
+            skipped.push(item.InvName || item.Name || ('Investigation ' + invId));
+            continue;
+        }
+        children.push(item);
+        existing[invId] = true;
+    }
+
+    if (skipped.length) {
+        toastr.warning(
+            (packageName || 'Package') +
+            ': cannot add package because these investigation(s) are already added individually or from another package: ' +
+            skipped.join(', ') +
+            '. Remove them first, then add the package.'
+        );
+        return;
+    }
+
+    if (!children.length) {
+        toastr.warning((packageName || 'Package') + ': all investigations already added, package not added.');
+        return;
+    }
+
+    var parentNode = table.row.add([
+        'PKG|' + packageKey,
+        packageCode,
+        '<div class="pkg-parent-label"><span class="pkg-parent-code">' + htmlEncode(packageCode) + '</span><span>Package: ' + htmlEncode(packageName || 'Package') + '</span></div>',
+        packagePrice.toFixed(2),
+        '<div class="text-muted small">Package priced</div>',
+        packagePrice.toFixed(2),
+        '<a href="#"><i class="fa fa-trash fa-sm delete" style="color: #ad0000;"></i></a>'
+    ]).draw(false).node();
+
+    $(parentNode)
+        .attr('data-package-parent', '1')
+        .attr('data-package-id', packageKey)
+        .addClass('package-parent-row');
+
+    billingPackageState[packageKey] = {
+        packageId: packageKey,
+        packageName: packageName || 'Package',
+        packageCode: packageCode,
+        packagePrice: packagePrice
+    };
+
+    for (var c = 0; c < children.length; c++) {
+        var child = children[c];
+        var childRate = parseFloat(child.Rate || 0) || 0;
+        var childNode = table.row.add([
+            child.Id,
+            child.InvCode || '',
+            '<div class="pkg-child-wrap"><span class="pkg-child-badge">Pkg</span><div><span class="pkg-child-name">' + htmlEncode(child.InvName || '-') + '</span><span class="pkg-child-meta">' + htmlEncode(packageName || 'Package') + '</span></div></div>',
+            childRate.toFixed(2),
+            '<div style="display: flex;"> <input class="form-control form-control-sm" type="number" name="DiscountAmount" placeholder="Rs 0.00" disabled="disabled"> <input class="form-control form-control-sm" type="number" name="DiscountPercent" placeholder="0%" disabled="disabled"> </div>',
+            '0.00',
+            '<span class="text-muted">-</span>'
+        ]).draw(false).node();
+
+        $(childNode)
+            .attr('data-package-child', '1')
+            .attr('data-package-id', packageKey)
+            .attr('data-package-code', packageCode)
+            .attr('data-package-name', packageName || 'Package')
+            .attr('data-package-price', packagePrice.toFixed(2))
+            .attr('data-package-charge-owner', c === 0 ? '1' : '0')
+            .addClass('package-child-row');
+    }
+
+    calculateAndSetSummaryAmounts();
+}
+
+function getPackageDropdownMeta(packageId) {
+    var data = $('.pkgsearch').select2('data') || [];
+    for (var i = 0; i < data.length; i++) {
+        if ((data[i].id || '').toString() === (packageId || '').toString()) {
+            return data[i];
+        }
+    }
+    return { packageCode: '', price: 0 };
+}
+
+function removePackageRows(packageId) {
+    if (!packageId) return;
+    var packageKey = (packageId || '').toString();
+    var table = $("#invtable").DataTable();
+    table.rows(function (idx, data, node) {
+        return ($(node).attr('data-package-id') || '') === packageKey;
+    }).remove().draw();
+    delete billingPackageState[packageKey];
+    calculateAndSetSummaryAmounts();
+}
 
 // #region Discount Calculation
 $(document).ready(function () {
@@ -594,8 +902,19 @@ function calculateAndSetSummaryAmounts() {
     // Iterate over each row in the DataTable
     i.rows().every(function () {
         var rowNode = this.node(); // Get the DOM node for the current row
-        var rate = parseFloat($(rowNode).find("td:nth-child(3)").text()); // Rate from 3rd column
-        // Get Net Amount directly from the visible table cell (5th column)
+        if ($(rowNode).attr('data-package-parent') === '1') {
+            var packageRate = parseFloat($(rowNode).find("td:nth-child(3)").text()) || 0;
+            var packageNet = parseFloat($(rowNode).find("td:nth-child(5)").text()) || 0;
+            totalBill += packageRate;
+            totalNetAmount += packageNet;
+            return;
+        }
+
+        if ($(rowNode).attr('data-package-child') === '1') {
+            return;
+        }
+
+        var rate = parseFloat($(rowNode).find("td:nth-child(3)").text());
         var netAmount = parseFloat($(rowNode).find("td:nth-child(5)").text());
 
         if (isNaN(rate)) rate = 0; // Handle potential NaN

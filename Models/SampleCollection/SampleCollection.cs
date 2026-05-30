@@ -10,8 +10,8 @@ namespace eMedLis.Models.SampleCollection
         public int SampleCollectionId { get; set; }
         public int BillSummaryId { get; set; }
         public int PatientInfoId { get; set; }
-        public DateTime CollectionDate { get; set; }
-        public TimeSpan CollectionTime { get; set; }
+        public DateTime? CollectionDate { get; set; }
+        public TimeSpan? CollectionTime { get; set; }
         public string CollectedBy { get; set; }
         public string CollectionBarcode { get; set; }
         public string CollectionStatus { get; set; }

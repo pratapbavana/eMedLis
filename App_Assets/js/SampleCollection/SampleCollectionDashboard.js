@@ -1,11 +1,13 @@
-﻿var currentBillToCollect = null;
+var currentBillToCollect = null;
+var currentSampleCollectionId = 0;
 var AppRoutes = AppRoutes || {};
 
 AppRoutes.SampleCollection = {
     getCollectionData: '/SampleCollection/GetCollectionData',
     saveCollection: '/SampleCollection/SaveCollection',
     getPendingCollections: '/SampleCollection/GetPendingCollections',
-    printLabels: '/SampleCollection/PrintCollectionLabels'
+    printLabels: '/SampleCollection/PrintCollectionLabels',
+    getBillByNo: '/PatientBilling/GetBillByNo'
 };
 
 $(document).ready(function () {
@@ -26,16 +28,16 @@ function loadCollectionsTable() {
         },
         order: [[1, 'desc']],
         columns: [
-            {
-                data: 'collectionBarcode',
-                render: function (data) {
-                    return data === 'New' ? '<span class="badge badge-warning">New</span>' : data;
-                }
-            },
+            //{
+            //    data: 'collectionBarcode',
+            //    render: function (data) {
+            //        return data === 'New' ? '<span class="badge badge-warning">New</span>' : data;
+            //    }
+            //},
             {
                 data: null,
                 render: function (data, type, row) {
-                    return row.collectionDate + ' ' + row.collectionTime;
+                    return row.billDate;
                 }
             },
             { data: 'billNo' },
@@ -53,21 +55,16 @@ function loadCollectionsTable() {
             {
                 data: 'status',
                 render: function (data) {
-                    var badgeClass =
-                        data === 'New' ? 'badge-secondary' :
-                            data === 'Collected' ? 'badge-success' :
-                                data === 'Partially Collected' ? 'badge-info' :
-                                    data === 'Partial Rejection' ? 'badge-warning' :
-                                        data === 'Rejected' ? 'badge-danger' : 'badge-secondary';
-                    return '<span class="badge ' + badgeClass + '">' + data + '</span>';
+                    var statusInfo = normalizeStatus(data);
+                    return '<span class="badge ' + statusInfo.badgeClass + '">' + statusInfo.label + '</span>';
                 }
             },
             {
                 data: null,
                 render: function (data, type, row) {
                     return `<div class="progress" style="height: 20px;">
-                        <div class="progress-bar bg-success" role="progressbar" 
-                             style="width: ${row.progressPercent}%" 
+                        <div class="progress-bar bg-success" role="progressbar"
+                            style="width: ${row.progressPercent}%" 
                              aria-valuenow="${row.progressPercent}" 
                              aria-valuemin="0" aria-valuemax="100">
                             ${row.collectedCount}/${row.totalInvestigations}
@@ -88,7 +85,8 @@ function loadCollectionsTable() {
                 orderable: false,
                 render: function (data, type, row) {
                     // Only allow edit if status is New, Pending, or In Progress
-                    var canEdit = ['New', 'Pending', 'In Progress', 'Partially Collected', 'Partial Rejection'].includes(row.status);
+                    var statusInfo = normalizeStatus(row.status);
+                    var canEdit = ['New', 'Pending', 'Partial'].includes(statusInfo.label);
 
                     var buttons = `<div class="btn-group btn-group-sm" role="group">`;
 
@@ -119,6 +117,31 @@ function loadCollectionsTable() {
     });
 }
 
+function normalizeStatus(rawStatus) {
+    var status = (rawStatus || '').toString().trim();
+    var normalized =
+        status === 'InTransit' ? 'In Transit' :
+            status === 'In Progress' ? 'Pending' :
+                status === 'Partially Collected' ? 'Partial' :
+                    status === 'Partial Rejection' ? 'Partial' :
+                        status === 'Collected' ? 'Collected' :
+                            status === 'Rejected' ? 'Rejected' :
+                                status === 'Partial' ? 'Partial' :
+                                    status === 'Pending' ? 'Pending' :
+                                        status === 'New' ? 'New' :
+                                            status.length ? status : 'New';
+
+    var badgeClass =
+        normalized === 'Collected' ? 'badge-success' :
+            normalized === 'Rejected' ? 'badge-danger' :
+                normalized === 'Partial' ? 'badge-warning' :
+                    normalized === 'In Transit' ? 'badge-info' :
+                        normalized === 'Pending' ? 'badge-secondary' :
+                            normalized === 'New' ? 'badge-secondary' : 'badge-secondary';
+
+    return { label: normalized, badgeClass: badgeClass };
+}
+
 function setupModalEvents() {
     // Home collection checkbox
     $('#sampleCollectionModal').on('change', '#scHomeCollection', function () {
@@ -136,27 +159,56 @@ function setupModalEvents() {
 
     // Print Labels button
     $('#btnPrintLabels').click(function () {
-        if (!currentBillToCollect) {
-            toastr.error('Please load collection data first.');
+        if (!currentSampleCollectionId || currentSampleCollectionId <= 0) {
+            toastr.error('No saved sample collection found for this bill. Save collection first.');
             return;
         }
-        window.open(AppRoutes.SampleCollection.printLabels + '/' + currentBillToCollect, '_blank');
+        printCollectionLabels(currentSampleCollectionId);
     });
 }
 
 function setupFilterEvents() {
     $('#statusFilter').change(function () {
         var table = $('#collectionsTable').DataTable();
-        table.column(7).search($(this).val()).draw();
+        table.column(6).search($(this).val()).draw();
     });
 
     $('#priorityFilter').change(function () {
         var table = $('#collectionsTable').DataTable();
-        table.column(6).search($(this).val()).draw();
+        table.column(5).search($(this).val()).draw();
     });
 
     $('#searchBox').keyup(function () {
         $('#collectionsTable').DataTable().search($(this).val()).draw();
+    });
+
+    $('#billSearchBox').on('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            var billNo = $(this).val().trim();
+            if (!billNo) {
+                toastr.warning('Please enter a bill number');
+                return;
+            }
+
+            $.ajax({
+                url: AppRoutes.SampleCollection.getBillByNo,
+                type: 'GET',
+                data: { billNo: billNo },
+                success: function (response) {
+                    if (response && response.success && response.billData && response.billData.billSummaryId) {
+                        editCollection(response.billData.billSummaryId);
+                        $('#billSearchBox').val('').blur();
+                    } else {
+                        toastr.error(response && response.message ? response.message : 'Bill not found');
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Bill lookup error:', error);
+                    toastr.error('Error looking up bill number');
+                }
+            });
+        }
     });
 }
 
@@ -169,6 +221,7 @@ function openNewCollection() {
 
 function editCollection(billSummaryId) {
     currentBillToCollect = billSummaryId;
+    currentSampleCollectionId = 0;
 
     if (!billSummaryId || billSummaryId === 0) {
         toastr.error('Invalid Bill ID');
@@ -191,17 +244,20 @@ function editCollection(billSummaryId) {
 
                 // Step 2: Check if this bill already has a sample collection
                 var sampleCollectionId = response.data.sampleCollectionId;
+                currentSampleCollectionId = sampleCollectionId || 0;
 
-                if (sampleCollectionId && sampleCollectionId > 0) {
-                    console.log('Bill has existing collection, loading it:', sampleCollectionId);
+                $('#sampleCollectionModal').modal('show');
 
-                    // IMPORTANT: Load and APPLY existing collection status AFTER populating the form
-                    loadAndApplyExistingCollection(sampleCollectionId);
-                } else {
-                    console.log('New collection for this bill');
-                    // Show modal for new collection
-                    $('#sampleCollectionModal').modal('show');
-                }
+                //if (sampleCollectionId && sampleCollectionId > 0) {
+                //    console.log('Bill has existing collection, loading it:', sampleCollectionId);
+
+                //    // IMPORTANT: Load and APPLY existing collection status AFTER populating the form
+                //    loadAndApplyExistingCollection(sampleCollectionId);
+                //} else {
+                //    console.log('New collection for this bill');
+                //    // Show modal for new collection
+                //    $('#sampleCollectionModal').modal('show');
+                //}
             } else {
                 toastr.error('Error: ' + response.message);
             }
@@ -226,7 +282,7 @@ function loadAndApplyExistingCollection(sampleCollectionId) {
 
             if (response.success && response.data) {
                 console.log('Collection loaded successfully, applying status...');
-                applyExistingCollectionStatus(response.data);
+                //applyExistingCollectionStatus(response.data);
                 $('#sampleCollectionModal').modal('show');
             } else {
                 console.warn('Collection load failed:', response.message);
@@ -529,12 +585,10 @@ function populateSampleCollectionModal(data) {
     $('#scBillNo').text(data.billNo || '');
     $('#scCollectionBarcode').text(data.collectionBarcode || 'New');
 
-    // Set default date/time for NEW collections only
-    if (!data.sampleCollectionId || data.sampleCollectionId === 0) {
-        var now = new Date();
-        $('#scCollectionDate').val(now.toISOString().split('T')[0]);
-        $('#scCollectionTime').val(now.toTimeString().slice(0, 5));
-    }
+    $('#scBillDate').text(data.billDate || '');
+    var collectedBy = data.collectedBy || $('#scCollectedBy').val() || '';
+    $('#scCollectedBy').val(collectedBy);
+
 
     // Clear and populate samples table with investigations from bill
     var tbody = $('#scSamplesTable tbody');
@@ -571,16 +625,16 @@ function populateSampleCollectionModal(data) {
                 </td>
                 <td>
                     <select class="form-control form-control-sm sample-status">
-                        <option value="Pending">Pending</option>
-                        <option value="Collected">Collected</option>
-                        <option value="Rejected">Rejected</option>
+                        <option value="Pending" ${item.samplestatus === 'Pending' ? 'selected' : ''}>Pending</option>
+                        <option value="Collected" ${item.samplestatus === 'Collected' ? 'selected' : ''}>Collected</option>
+                        <option value="Rejected" ${item.samplestatus === 'Rejected' ? 'selected' : ''}>Rejected</option>
                     </select>
                 </td>
                 <td>
-                    <input type="text" class="form-control form-control-sm collected-quantity" placeholder="e.g., 2ml">
+                    <input type="text" class="form-control form-control-sm collected-quantity" placeholder="e.g., 2ml" value="${item.collectedQuantity}">
                 </td>
                 <td>
-                    <input type="text" class="form-control form-control-sm collection-datetime" readonly placeholder="Auto-filled">
+                    <input type="text" class="form-control form-control-sm collection-datetime" readonly placeholder="Auto-filled" value="${item.collectiondate ? `${item.collectiondate} ${item.collectiontime || ''}` : ''}">
                 </td>
                 <td>
                     <input type="text" class="form-control form-control-sm rejection-reason" placeholder="If rejected" style="display:none;">
@@ -592,7 +646,6 @@ function populateSampleCollectionModal(data) {
 
     // Reset other fields to defaults
     $('#scPriority').val('Normal');
-    $('#scCollectedBy').val('Admin');
     $('#scRemarks').val('');
     $('#scHomeCollection').prop('checked', false);
     $('#scAddressSection').hide();
@@ -605,8 +658,6 @@ function saveSampleCollection() {
 
     var sampleCollection = {
         BillSummaryId: currentBillToCollect,
-        CollectionDate: $('#scCollectionDate').val(),
-        CollectionTime: $('#scCollectionTime').val(),
         CollectedBy: $('#scCollectedBy').val(),
         Priority: $('#scPriority').val(),
         HomeCollection: $('#scHomeCollection').is(':checked'),
@@ -666,13 +717,14 @@ function saveSampleCollection() {
             console.log('Save response:', response);
 
             if (response.success) {
+                currentSampleCollectionId = response.sampleCollectionId || 0;
                 toastr.success('Sample collection saved - Barcode: ' + response.collectionBarcode);
                 $('#sampleCollectionModal').modal('hide');
                 $('#collectionsTable').DataTable().ajax.reload();
 
                 setTimeout(function () {
                     if (confirm('Do you want to print labels?')) {
-                        window.open('/SampleCollection/PrintCollectionLabels/' + response.sampleCollectionId, '_blank');
+                        printCollectionLabels(response.sampleCollectionId);
                     }
                 }, 500);
             } else {
@@ -687,14 +739,7 @@ function saveSampleCollection() {
 }
 
 function validateSampleCollection() {
-    if (!$('#scCollectionDate').val()) {
-        toastr.error('Please select collection date');
-        return false;
-    }
-    if (!$('#scCollectionTime').val()) {
-        toastr.error('Please select collection time');
-        return false;
-    }
+   
     if (!$('#scCollectedBy').val()) {
         toastr.error('Please enter collected by name');
         return false;
@@ -703,6 +748,10 @@ function validateSampleCollection() {
 }
 
 function printCollectionLabels(sampleCollectionId) {
+    if (!sampleCollectionId || sampleCollectionId <= 0) {
+        toastr.error('Invalid sample collection id.');
+        return;
+    }
     window.open(AppRoutes.SampleCollection.printLabels + '/' + sampleCollectionId, '_blank');
 }
 
@@ -717,7 +766,7 @@ function applyFilters() {
     var priority = $('#priorityFilter').val();
 
     // Apply column filters
-    table.column(6).search(priority).column(7).search(status).draw();
+    table.column(5).search(priority).column(6).search(status).draw();
 }
 
 function refreshCollections() {
@@ -785,3 +834,5 @@ function formatTimeForInput(timeValue) {
         return '';
     }
 }
+
+

@@ -1,0 +1,148 @@
+@{
+    ViewBag.Title = "Report Settings";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section Scripts {
+    @Scripts.Render("~/App_Assets/js/ReportSettings/ReportSettings.js")
+}
+<style>
+    .rs-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 14px;
+        margin-bottom: 14px;
+        background: #fff;
+    }
+
+    .rs-title {
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 10px;
+    }
+
+    .rs-help {
+        color: #6b7280;
+        font-size: 12px;
+    }
+
+    .rs-preview-shell {
+        background: #f3f4f6;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        height: 560px;
+        overflow: auto;
+        padding: 12px;
+    }
+</style>
+
+<div class="row">
+    <div class="col-lg-7">
+        <div class="card card-primary card-outline">
+            <div class="card-header">
+                <h3 class="card-title text-lg font-weight-bold mb-0">
+                    <i class="fas fa-cog mr-2 text-primary"></i>Report Settings
+                </h3>
+            </div>
+            <div class="card-body">
+                <form id="reportSettingsForm" onsubmit="return false;">
+                    <div class="rs-card">
+                        <div class="rs-title">Print Mode</div>
+                        <div class="form-row align-items-center">
+                            <div class="form-group col-md-7 mb-1">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" id="rsModePlain" name="rsPrintMode" value="PlainPaper" checked="checked" />
+                                    <label class="form-check-label" for="rsModePlain">Plain Paper</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" id="rsModePrePrinted" name="rsPrintMode" value="PrePrinted" />
+                                    <label class="form-check-label" for="rsModePrePrinted">Pre-Printed Letterhead</label>
+                                </div>
+                            </div>
+                            <div class="form-group col-md-5 mb-1">
+                                <span class="rs-help">Plain Paper uses header/footer images from Lab Master. Pre-Printed ignores them.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rs-card">
+                        <div class="rs-title">Header and Footer Settings</div>
+                        <div class="form-row">
+                            <div class="form-group col-md-3 mb-1">
+                                <div class="icheck-success">
+                                    <input type="checkbox" id="rsPrintHeader" checked="checked" />
+                                    <label for="rsPrintHeader">Print Header</label>
+                                </div>
+                            </div>
+                            <div class="form-group col-md-3 mb-1">
+                                <label for="rsHeaderHeightPx">Header Height (px)</label>
+                                <input type="number" id="rsHeaderHeightPx" class="form-control" min="0" max="400" value="120" />
+                            </div>
+                            <div class="form-group col-md-3 mb-1">
+                                <div class="icheck-success">
+                                    <input type="checkbox" id="rsPrintFooter" checked="checked" />
+                                    <label for="rsPrintFooter">Print Footer</label>
+                                </div>
+                            </div>
+                            <div class="form-group col-md-3 mb-1">
+                                <label for="rsFooterHeightPx">Footer Height (px)</label>
+                                <input type="number" id="rsFooterHeightPx" class="form-control" min="0" max="300" value="60" />
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-12 mb-1">
+                                <label for="rsFooterText">Footer Text</label>
+                                <input type="text" id="rsFooterText" class="form-control" maxlength="500" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rs-card">
+                        <div class="rs-title">Alignment and Margins</div>
+                        <div class="form-row">
+                            <div class="form-group col-md-3 mb-1">
+                                <label for="rsTopMarginPx">Top Margin (px)</label>
+                                <input type="number" id="rsTopMarginPx" class="form-control" min="0" max="200" value="38" />
+                            </div>
+                            <div class="form-group col-md-3 mb-1">
+                                <label for="rsLeftMarginPx">Left Margin (px)</label>
+                                <input type="number" id="rsLeftMarginPx" class="form-control" min="0" max="200" value="38" />
+                            </div>
+                            <div class="form-group col-md-3 mb-1">
+                                <label for="rsRightMarginPx">Right Margin (px)</label>
+                                <input type="number" id="rsRightMarginPx" class="form-control" min="0" max="200" value="38" />
+                            </div>
+                            <div class="form-group col-md-3 mb-1">
+                                <label for="rsBottomMarginPx">Bottom Margin (px)</label>
+                                <input type="number" id="rsBottomMarginPx" class="form-control" min="0" max="200" value="38" />
+                            </div>
+                            <div class="form-group col-md-6 mb-1">
+                                <label for="rsContentStartPx">Content Start Position (px)</label>
+                                <input type="number" id="rsContentStartPx" class="form-control" min="0" max="500" value="0" />
+                            </div>
+                            <div class="form-group col-md-6 mb-1 d-flex align-items-end">
+                                <span class="rs-help">For newborn/pre-printed setups, adjust only this start position and margins.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-right">
+                        <button type="button" class="btn btn-outline-primary" id="btnRsPreview">Preview</button>
+                        <button type="button" class="btn btn-primary" id="btnRsSave">Save Settings</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card card-secondary card-outline">
+            <div class="card-header">
+                <h3 class="card-title font-weight-bold mb-0">Live Preview</h3>
+            </div>
+            <div class="card-body">
+                <div id="rsPreviewPane" class="rs-preview-shell"></div>
+            </div>
+        </div>
+    </div>
+</div>

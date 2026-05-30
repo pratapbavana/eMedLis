@@ -1,0 +1,89 @@
+@model eMedLis.Models.SampleCollection.SampleCollectionViewModel
+@{
+    Layout = null;
+    var collection = Model.SampleCollection;
+    var bill = Model.BillSummary;
+    var patient = Model.PatientInfo;
+    var details = Model.SampleDetails ?? new List<eMedLis.Models.SampleCollection.SampleCollectionDetail>();
+    var barcodeMap = ViewBag.SampleBarcodes as Dictionary<string, string> ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    Func<DateTime?, string> formatDateTime = dt => dt.HasValue ? dt.Value.ToString("dd/MM/yyyy HH:mm") : "";
+    var specimenLabels = details
+        .Where(d => string.Equals(d.SampleStatus, "Collected", StringComparison.OrdinalIgnoreCase))
+        .GroupBy(d => (d.SpecimenType ?? "").Trim().ToLowerInvariant())
+        .Select(g => g.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.SampleBarcode)) ?? g.First())
+        .Where(x => x != null)
+        .ToList();
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sample Labels - @bill.BillNo</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; color: #000; }
+        .label-sheet { display: block; }
+        .label {
+            width: 100mm;
+            height: 50mm;
+            border: 0.2mm solid #000;
+            padding: 2.5mm 3mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            page-break-after: always;
+        }
+        .label:last-child { page-break-after: auto; }
+        .row { display: flex; justify-content: space-between; font-size: 11pt; line-height: 1.2; }
+        .title { font-weight: bold; font-size: 12pt; max-width: 70mm; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .barcode { font-weight: bold; font-size: 12pt; letter-spacing: 0.4px; }
+        .barcode-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; }
+        .line-barcode { width: 85mm; height: 16mm; object-fit: contain; }
+        .barcode-text { font-weight: bold; font-size: 10pt; margin-top: 1mm; letter-spacing: 0.3px; text-align: center; width: 100%; }
+        .muted { color: #444; }
+        @@media print {
+            @@page {
+                size: 100mm 50mm;
+                margin: 0;
+            }
+            body { padding: 0; margin: 0; }
+            .label { page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body onload="window.print()">
+    <div class="label-sheet">
+        @foreach (var d in specimenLabels)
+        {
+            var barcodeText = (d.SampleBarcode ?? "").Trim();
+            var lineBarcode = (!string.IsNullOrWhiteSpace(barcodeText) && barcodeMap.ContainsKey(barcodeText)) ? barcodeMap[barcodeText] : "";
+            <div class="label">
+                <div class="row">
+                    <div class="title">@patient.PatName</div>
+                    <div>@patient.Age / @patient.Gender</div>
+                </div>
+                <div class="row">
+                    <div>Bill: @bill.BillNo</div>
+                    <div class="muted">@formatDateTime(bill.BillDate)</div>
+                </div>
+                <div class="row">
+                    <div>Specimen: @d.SpecimenType</div>
+                </div>
+                <div class="barcode-wrap">
+                    @if (!string.IsNullOrWhiteSpace(lineBarcode))
+                    {
+                        <img class="line-barcode" src="@lineBarcode" alt="Barcode" />
+                        <div class="barcode-text">@barcodeText</div>
+                    }
+                    else
+                    {
+                        <div class="muted">Barcode not available</div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</body>
+</html>

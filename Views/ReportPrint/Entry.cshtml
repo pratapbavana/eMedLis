@@ -1,0 +1,95 @@
+@{
+    ViewBag.Title = "Report Print";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section Scripts {
+    <script>
+        var reportPrintBillSummaryId = @ViewBag.BillSummaryId;
+    </script>
+    @Scripts.Render("~/App_Assets/js/ReportPrint/ReportPrintEntry.js")
+}
+
+<div class="container-fluid mt-3">
+    <div class="card card-primary card-outline">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title text-lg font-weight-bold mb-0">
+                <i class="fas fa-print mr-2 text-primary"></i>Report Print - Investigation Selection
+            </h3>
+            <a class="btn btn-sm btn-secondary" href="@Url.Action("Index", "ReportPrint")">Back to Bill List</a>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-3"><strong>Bill No:</strong> <span id="rpeBillNo">-</span></div>
+                <div class="col-md-3"><strong>Patient:</strong> <span id="rpePatientName">-</span></div>
+                <div class="col-md-3"><strong>Age/Gender:</strong> <span id="rpeAgeGender">-</span></div>
+                <div class="col-md-3"><strong>Mobile:</strong> <span id="rpeMobileNo">-</span></div>
+            </div>
+
+            <div class="table-responsive mb-3">
+                <table class="table table-sm table-bordered table-striped" id="rpeGrid">
+                    <thead>
+                        <tr>
+                            <th style="width: 45px;"><input type="checkbox" id="rpeSelectAll" /></th>
+                            <th>Sample ID</th>
+                            <th>Investigation</th>
+                            <th>Department</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div class="border rounded p-3 mb-3">
+                <div class="font-weight-bold mb-2">Print Options</div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="rpePrintOption" id="rpeIndividual" value="Individual" checked="checked" />
+                    <label class="form-check-label" for="rpeIndividual">Print Individually</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="rpePrintOption" id="rpeGrouped" value="Grouped" />
+                    <label class="form-check-label" for="rpeGrouped">Group by Sub Department</label>
+                </div>
+            </div>
+
+            <div class="text-right">
+                <button type="button" class="btn btn-outline-primary" id="btnRpePreview">Preview</button>
+                <button type="button" class="btn btn-primary" id="btnRpePrint">Print</button>
+                <button type="button" class="btn btn-danger" id="btnRpeExportPdf">Export PDF</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="rpePreviewModal">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Report Preview</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-3">
+                    <div>
+                        <button type="button" class="btn btn-sm btn-secondary" id="btnPreviewBack">Back</button>
+                        <button type="button" class="btn btn-sm btn-primary" id="btnPreviewPrint">Print</button>
+                        <button type="button" class="btn btn-sm btn-danger" id="btnPreviewPdf">Export PDF</button>
+                    </div>
+                    <div>
+                        <div class="form-check form-check-inline mb-0">
+                            <input class="form-check-input" type="radio" name="rpePreviewMode" id="rpePreviewIndividual" value="Individual" checked="checked" />
+                            <label class="form-check-label" for="rpePreviewIndividual">Individual</label>
+                        </div>
+                        <div class="form-check form-check-inline mb-0">
+                            <input class="form-check-input" type="radio" name="rpePreviewMode" id="rpePreviewGrouped" value="Grouped" />
+                            <label class="form-check-label" for="rpePreviewGrouped">Grouped by Department</label>
+                        </div>
+                    </div>
+                </div>
+                <div id="rpePreviewBody" style="max-height:70vh; overflow:auto;"></div>
+            </div>
+        </div>
+    </div>
+</div>

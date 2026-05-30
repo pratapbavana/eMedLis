@@ -7,6 +7,71 @@
     @Scripts.Render("~/app_assets/js/PatientBilling/PatientBilling.js")
 }
 
+<style>
+    #invtable tbody tr.package-parent-row {
+        background: #fff3cd;
+    }
+
+    #invtable tbody tr.package-parent-row td {
+        border-top: 2px solid #f0c36d;
+        border-bottom: 2px solid #f0c36d;
+        font-weight: 600;
+    }
+
+    #invtable tbody tr.package-child-row td {
+        background: #fbfcfe;
+        color: #495057;
+    }
+
+    #invtable .pkg-parent-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 700;
+        color: #9a6700;
+    }
+
+    #invtable .pkg-parent-code {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: #ffe8a3;
+        color: #7a5800;
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    #invtable .pkg-child-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-left: 18px;
+    }
+
+    #invtable .pkg-child-badge {
+        display: inline-block;
+        min-width: 52px;
+        text-align: center;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: #e8f1ff;
+        color: #0d47a1;
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    #invtable .pkg-child-name {
+        font-weight: 500;
+    }
+
+    #invtable .pkg-child-meta {
+        display: block;
+        margin-top: 2px;
+        font-size: 11px;
+        color: #6c757d;
+    }
+</style>
+
 <div class="row" id="PatList">
     <div class="col-md-12">
         <div class="card card-primary card-outline">
@@ -161,9 +226,15 @@
                         <div class="col-sm-12 col-md-12 col-lg-8">
                             <div class="card">
                                 <div class="card-body p-1">
-                                    <div class="form-group mb-0">
-                                        @*<label class="col-form-label-sm" for="Inv">Investigation</label>*@
-                                        <select type="text" id="Inv" class="invsearch form-control form-control-sm"> </select>
+                                    <div class="form-row mb-2">
+                                        <div class="col-md-6">
+                                            <label class="col-form-label-sm mb-1" for="Inv">Add Investigation</label>
+                                            <select type="text" id="Inv" class="invsearch form-control form-control-sm"> </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="col-form-label-sm mb-1" for="Pkg">Add Package</label>
+                                            <select type="text" id="Pkg" class="pkgsearch form-control form-control-sm"></select>
+                                        </div>
                                     </div>
                                     <div class="table-responsive form-group mb-0">
                                         <table class="table table-sm table-borderless table-striped nowrap" style="width:100%" id="invtable">

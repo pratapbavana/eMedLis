@@ -1,0 +1,71 @@
+@{
+    ViewBag.Title = "Report Authorization";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section Scripts {
+    @Scripts.Render("~/App_Assets/js/ReportAuthorization/ReportAuthorizationList.js")
+}
+
+<div class="container-fluid mt-3">
+    <div class="card card-primary card-outline">
+        <div class="card-header">
+            <h3 class="card-title text-lg font-weight-bold">
+                <i class="fas fa-user-check mr-2 text-primary"></i>Report Authorization
+            </h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="form-group col-md-2">
+                    <label for="authDateFrom">Date From</label>
+                    <input type="date" class="form-control" id="authDateFrom" />
+                </div>
+                <div class="form-group col-md-2">
+                    <label for="authDateTo">Date To</label>
+                    <input type="date" class="form-control" id="authDateTo" />
+                </div>
+                <div class="form-group col-md-2">
+                    <label for="authPatientName">Patient Name</label>
+                    <input type="text" class="form-control" id="authPatientName" />
+                </div>
+                <div class="form-group col-md-2">
+                    <label for="authSampleId">Sample ID</label>
+                    <input type="text" class="form-control" id="authSampleId" />
+                </div>
+                <div class="form-group col-md-2">
+                    <label for="authInvestigation">Investigation</label>
+                    <input type="text" class="form-control" id="authInvestigation" />
+                </div>
+                <div class="form-group col-md-2 d-flex align-items-end">
+                    <div class="icheck-danger d-inline">
+                        <input type="checkbox" id="authCriticalOnly" />
+                        <label for="authCriticalOnly">Critical Only</label>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <button type="button" class="btn btn-primary" id="btnAuthSearch">Search</button>
+                <button type="button" class="btn btn-secondary" id="btnAuthClear">Clear</button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered table-striped" id="authTable">
+                    <thead>
+                        <tr>
+                            <th>Sample</th>
+                            <th>Patient</th>
+                            <th>Age/Gender</th>
+                            <th>Investigation</th>
+                            <th>Department</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Critical</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

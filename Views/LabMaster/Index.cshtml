@@ -1,0 +1,176 @@
+@{
+    ViewBag.Title = "Lab Master";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section Scripts{
+    @Scripts.Render("~/App_Assets/js/LabMaster/LabMaster.js")
+}
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card card-primary card-outline">
+            <div class="card-header">
+                <h3 class="card-title text-lg font-weight-bold">
+                    <i class="fas fa-hospital mr-2 text-primary"></i>Lab Master
+                </h3>
+            </div>
+            <div class="card-body">
+                <form id="labMasterForm">
+                    <div class="form-row">
+                        <div class="form-group col-md-4">
+                            <label for="lmLabName">Lab Name</label>
+                            <input type="text" id="lmLabName" class="form-control" maxlength="200" />
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label for="lmShortName">Short Name</label>
+                            <input type="text" id="lmShortName" class="form-control" maxlength="100" />
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label for="lmTagline">Tagline</label>
+                            <input type="text" id="lmTagline" class="form-control" maxlength="200" />
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group col-md-4">
+                            <label for="lmAddressLine1">Address Line 1</label>
+                            <input type="text" id="lmAddressLine1" class="form-control" maxlength="200" />
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label for="lmAddressLine2">Address Line 2</label>
+                            <input type="text" id="lmAddressLine2" class="form-control" maxlength="200" />
+                        </div>
+                        <div class="form-group col-md-2">
+                            <label for="lmCity">City</label>
+                            <input type="text" id="lmCity" class="form-control" maxlength="80" />
+                        </div>
+                        <div class="form-group col-md-2">
+                            <label for="lmState">State</label>
+                            <input type="text" id="lmState" class="form-control" maxlength="80" />
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group col-md-2">
+                            <label for="lmPincode">Pincode</label>
+                            <input type="text" id="lmPincode" class="form-control" maxlength="20" />
+                        </div>
+                        <div class="form-group col-md-2">
+                            <label for="lmCountry">Country</label>
+                            <input type="text" id="lmCountry" class="form-control" maxlength="80" />
+                        </div>
+                        <div class="form-group col-md-2">
+                            <label for="lmMobile">Mobile</label>
+                            <input type="text" id="lmMobile" class="form-control" maxlength="20" />
+                        </div>
+                        <div class="form-group col-md-2">
+                            <label for="lmAltMobile">Alternate Mobile</label>
+                            <input type="text" id="lmAltMobile" class="form-control" maxlength="20" />
+                        </div>
+                        <div class="form-group col-md-2">
+                            <label for="lmLandline">Landline</label>
+                            <input type="text" id="lmLandline" class="form-control" maxlength="20" />
+                        </div>
+                        <div class="form-group col-md-2">
+                            <label for="lmEmail">Email</label>
+                            <input type="text" id="lmEmail" class="form-control" maxlength="150" />
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group col-md-3">
+                            <label for="lmWebsite">Website</label>
+                            <input type="text" id="lmWebsite" class="form-control" maxlength="150" />
+                        </div>
+                        <div class="form-group col-md-2">
+                            <label for="lmGST">GST Number</label>
+                            <input type="text" id="lmGST" class="form-control" maxlength="30" />
+                        </div>
+                        <div class="form-group col-md-2">
+                            <label for="lmPAN">PAN Number</label>
+                            <input type="text" id="lmPAN" class="form-control" maxlength="20" />
+                        </div>
+                        <div class="form-group col-md-2">
+                            <label for="lmRegNo">Lab Registration Number</label>
+                            <input type="text" id="lmRegNo" class="form-control" maxlength="50" />
+                        </div>
+                        <div class="form-group col-md-2">
+                            <label for="lmNABL">NABL Number</label>
+                            <input type="text" id="lmNABL" class="form-control" maxlength="50" />
+                        </div>
+                        <div class="form-group col-md-1">
+                            <label for="lmDrugLicense">Drug License</label>
+                            <input type="text" id="lmDrugLicense" class="form-control" maxlength="50" />
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group col-md-3">
+                            <label for="lmBranchName">Branch Name</label>
+                            <input type="text" id="lmBranchName" class="form-control" maxlength="100" />
+                        </div>
+                        <div class="form-group col-md-2">
+                            <label for="lmBranchCode">Branch Code</label>
+                            <input type="text" id="lmBranchCode" class="form-control" maxlength="30" />
+                        </div>
+                        <div class="form-group col-md-7">
+                            <label for="lmReceiptFooter">Receipt Footer</label>
+                            <input type="text" id="lmReceiptFooter" class="form-control" maxlength="500" />
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group col-md-2">
+                            <label for="lmLogoFile">Logo (PNG/JPG)</label>
+                            <input type="file" id="lmLogoFile" class="form-control-file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" />
+                            <small class="form-text text-muted">200x80, max 200KB</small>
+                        </div>
+                        <div class="form-group col-md-2">
+                            <label for="lmHeaderFile">Report Header Image</label>
+                            <input type="file" id="lmHeaderFile" class="form-control-file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" />
+                        </div>
+                        <div class="form-group col-md-2">
+                            <label for="lmFooterFile">Report Footer Image</label>
+                            <input type="file" id="lmFooterFile" class="form-control-file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" />
+                        </div>
+                        <div class="form-group col-md-2">
+                            <label>Logo Preview</label>
+                            <div class="border text-center p-1" style="min-height:90px;">
+                                <img id="lmLogoPreview" style="max-width:200px;max-height:80px;display:none;" />
+                                <span id="lmNoLogo" class="text-muted">No Logo</span>
+                            </div>
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label>Report Display Settings</label>
+                            <div class="icheck-success">
+                                <input type="checkbox" id="lmShowLogo" checked="checked" />
+                                <label for="lmShowLogo">Show Logo in Report</label>
+                            </div>
+                            <div class="icheck-success">
+                                <input type="checkbox" id="lmShowGst" checked="checked" />
+                                <label for="lmShowGst">Show GST in Report</label>
+                            </div>
+                            <div class="icheck-success">
+                                <input type="checkbox" id="lmShowAccreditation" checked="checked" />
+                                <label for="lmShowAccreditation">Show Accreditation in Report</label>
+                            </div>
+                            <div class="icheck-success">
+                                <input type="checkbox" id="lmActive" checked="checked" />
+                                <label for="lmActive">Active</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <input type="hidden" id="lmLogoBase64" />
+                    <input type="hidden" id="lmHeaderBase64" />
+                    <input type="hidden" id="lmFooterBase64" />
+
+                    <div class="text-right">
+                        <button type="button" class="btn btn-primary" id="btnLabMasterSave">Save Lab Profile</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

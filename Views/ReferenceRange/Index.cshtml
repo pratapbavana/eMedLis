@@ -1,0 +1,196 @@
+@{
+    ViewBag.Title = "Reference Range Master";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section Scripts{
+    @Scripts.Render("~/App_Assets/js/ReferenceRange/ReferenceRange.js")
+}
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card card-primary card-outline">
+            <div class="card-header justify-content-between align-items-center">
+                <div class="col col-sm-10">
+                    <h3 class="card-title text-lg font-weight-bold">
+                        <i class="fas fa-ruler mr-2 text-primary"></i>Reference Range Master
+                    </h3>
+                </div>
+                <div class="col col-sm-2 offset-sm-10 text-sm-right">
+                    <button type="button" class="btn btn-blue btn-sm" data-toggle="modal" onclick="return openAddModal()" data-target="#range_modal">
+                        Add Range
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-bordered table-striped nowrap" style="width:100%" id="combosTable">
+                    <thead>
+                        <tr>
+                            <th>Serial</th>
+                            <th>Parameter</th>
+                            <th>Method</th>
+                            <th>Ranges</th>
+                            <th>Active</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="range_modal">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 id="header" class="modal-title">Create Reference Range</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <input type="hidden" id="Id" name="referenceRangeId" value="0">
+
+                    <div class="row">
+                        <input type="hidden" id="ParameterId">
+                        <div class="form-group col-sm-12 col-md-6">
+                            <label for="parametername">Parameter</label>
+                            <select type="text" class="form-control parametersearch validate" id="parametername" name="parametername"> </select>
+                        </div>
+
+                        <div class="form-group col-sm-12 col-md-6">
+                            <label for="MethodId">Method</label>
+                            <select type="text" class="form-control validate" id="MethodId" name="MethodId"> </select>
+                        </div>
+
+                        <div class="form-group col-sm-12 col-md-3">
+                            <label for="Gender">Gender</label>
+                            <select type="text" class="form-control validate" id="Gender" name="Gender">
+                                <option value="">Select</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Both">Both</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group col-sm-12 col-md-4">
+                            <label>Age From</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control validate" id="AgeFromValue" name="AgeFromValue" min="0" step="0.01">
+                                <div class="input-group-append">
+                                    <select class="form-control" id="AgeFromUnit" name="AgeFromUnit">
+                                        <option value="Days">Days</option>
+                                        <option value="Months">Months</option>
+                                        <option value="Years" selected>Years</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group col-sm-12 col-md-4">
+                            <label>Age To</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control validate" id="AgeToValue" name="AgeToValue" min="0" step="0.01">
+                                <div class="input-group-append">
+                                    <select class="form-control" id="AgeToUnit" name="AgeToUnit">
+                                        <option value="Days">Days</option>
+                                        <option value="Months">Months</option>
+                                        <option value="Years" selected>Years</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group col-12 mb-1">
+                            <small class="text-muted">
+                                Age rule: both From and To are inclusive. Same day range is allowed (example: 0-0 days). Month/Year mapping: 1-2 months => 31-60 days, 2-3 months => 61-90 days, 1-2 years => 366-730 days.
+                            </small>
+                        </div>
+
+                        <div class="form-group col-sm-12 col-md-3 normal-range-group">
+                            <label for="NormalMin">Normal Min</label>
+                            <input type="number" class="form-control validate" id="NormalMin" name="NormalMin" step="0.01">
+                        </div>
+
+                        <div class="form-group col-sm-12 col-md-3 normal-range-group">
+                            <label for="NormalMax">Normal Max</label>
+                            <input type="number" class="form-control validate" id="NormalMax" name="NormalMax" step="0.01">
+                        </div>
+
+                        <div class="form-group col-sm-12 col-md-3 critical-range-group">
+                            <label for="CriticalMin">Critical Min</label>
+                            <input type="number" class="form-control" id="CriticalMin" name="CriticalMin" step="0.01">
+                        </div>
+
+                        <div class="form-group col-sm-12 col-md-3 critical-range-group">
+                            <label for="CriticalMax">Critical Max</label>
+                            <input type="number" class="form-control" id="CriticalMax" name="CriticalMax" step="0.01">
+                        </div>
+
+                        <div class="form-group col-sm-12 col-md-12">
+                            <label for="RangeText">Reference Range Text (Optional)</label>
+                            <textarea class="form-control" id="RangeText" name="RangeText" rows="2" maxlength="500" placeholder="Example: Females: 12-16 g/dL, Males: 14-18 g/dL"></textarea>
+                        </div>
+
+                        <div class="form-group col-sm-12 col-md-3">
+                            <div class="icheck-success d-inline">
+                                <input type="checkbox" id="active1" name="active">
+                                <label class="form-check-label" for="active1">Active</label>
+                            </div>
+                        </div>
+
+                        <div class="form-group col-sm-12 col-md-3">
+                            <button type="button" class="btn btn-outline-primary btn-sm mt-4" onclick="return addRow();">Add Row</button>
+                        </div>
+                    </div>
+
+                    <hr />
+
+                    <table class="table table-sm table-bordered table-striped nowrap" style="width:100%" id="rangeRowsTable">
+                        <thead>
+                            <tr>
+                                <th>Age From</th>
+                                <th>Age To</th>
+                                <th>Gender</th>
+                                <th>Normal Min</th>
+                                <th>Normal Max</th>
+                                <th>Critical Min</th>
+                                <th>Critical Max</th>
+                                <th>Range Text</th>
+                                <th>Active</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </form>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-blue" id="btnSave" onclick="return SaveBatch();"> <span>Save Ranges</span></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="gap_warning_modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">Coverage Warning</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2">Potential gaps were found in month/year ranges:</p>
+                <ul id="gapWarningList" class="mb-0 pl-3"></ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" onclick="return clearGapWarningAndClose();" data-dismiss="modal">Fix Them</button>
+                <button type="button" class="btn btn-warning" onclick="return proceedSaveAfterGapWarning();">Skip and Save</button>
+            </div>
+        </div>
+    </div>
+</div>

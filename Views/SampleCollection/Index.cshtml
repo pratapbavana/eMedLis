@@ -31,11 +31,12 @@
                             <label>Status Filter:</label>
                             <select class="form-control form-control-sm" id="statusFilter">
                                 <option value="">All Status</option>
-                                <option value="New">New (Not Collected)</option>
+                                <option value="New">New</option>
                                 <option value="Pending">Pending</option>
                                 <option value="Partial">Partial</option>
                                 <option value="Collected">Collected</option>
-                                <option value="InTransit">In Transit</option>
+                                <option value="In Transit">In Transit</option>
+                                <option value="Rejected">Rejected</option>
                             </select>
                         </div>
                         <div class="col-md-2">
@@ -51,6 +52,11 @@
                             <label>Search:</label>
                             <input type="text" class="form-control form-control-sm" id="searchBox"
                                    placeholder="Search by Bill No, Patient, UHID...">
+                        </div>
+                        <div class="col-md-3">
+                            <label>Scan/Enter Bill No:</label>
+                            <input type="text" class="form-control form-control-sm" id="billSearchBox"
+                                   placeholder="Scan bill number and press Enter">
                         </div>
                         <div class="col-md-2">
                             <label>Days Pending:</label>
@@ -74,7 +80,6 @@
                         <table class="table table-striped table-hover" id="collectionsTable">
                             <thead class="thead-dark">
                                 <tr>
-                                    <th>Barcode</th>
                                     <th>Date/Time</th>
                                     <th>Bill No</th>
                                     <th>Patient Name</th>
@@ -157,12 +162,8 @@
                                     <div class="col-6" id="scCollectionBarcode" style="font-weight: bold; color: #28a745;"></div>
                                 </div>
                                 <div class="row mb-2">
-                                    <div class="col-6"><strong>Collection Date:</strong></div>
-                                    <div class="col-6"><input type="date" class="form-control form-control-sm" id="scCollectionDate"></div>
-                                </div>
-                                <div class="row mb-2">
-                                    <div class="col-6"><strong>Collection Time:</strong></div>
-                                    <div class="col-6"><input type="time" class="form-control form-control-sm" id="scCollectionTime"></div>
+                                    <div class="col-6"><strong>Bill Date:</strong></div>
+                                    <div class="col-6" id="scBillDate"></div>
                                 </div>
                                 <div class="row mb-2">
                                     <div class="col-6"><strong>Priority:</strong></div>
@@ -176,7 +177,10 @@
                                 </div>
                                 <div class="row">
                                     <div class="col-6"><strong>Collected By:</strong></div>
-                                    <div class="col-6"><input type="text" class="form-control form-control-sm" id="scCollectedBy" value="Admin"></div>
+                                    <div class="col-6">
+                                        <input type="text" class="form-control form-control-sm" id="scCollectedBy"
+                                               value="@User.Identity.Name" readonly>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -245,94 +249,3 @@
         </div>
     </div>
 </div>
-<!-- In Views/SampleCollection/Index.cshtml -->
-<script>
-    function loadCollectionsTable() {
-        if ($.fn.DataTable.isDataTable('#collectionsTable')) {
-            $('#collectionsTable').DataTable().destroy();
-        }
-
-        $('#collectionsTable').DataTable({
-            ajax: {
-                url: AppRoutes.SampleCollection.getPendingCollections,
-                dataSrc: ''
-            },
-            order: [[1, 'desc']], // Sort by date/time
-            columns: [
-                {
-                    data: 'collectionBarcode',
-                    render: function (data) {
-                        return data === 'New' ? '<span class="badge badge-warning">New</span>' : data;
-                    }
-                },
-                {
-                    data: null,
-                    render: function (data, type, row) {
-                        return row.collectionDate + ' ' + row.collectionTime;
-                    }
-                },
-                { data: 'billNo' },
-                { data: 'patientName' },
-                { data: 'uhid' },
-                { data: 'ageGender' },
-                {
-                    data: 'priority',
-                    render: function (data) {
-                        var badgeClass = data === 'STAT' ? 'badge-danger' :
-                            data === 'Urgent' ? 'badge-warning' : 'badge-info';
-                        return '<span class="badge ' + badgeClass + '">' + data + '</span>';
-                    }
-                },
-                {
-                    data: 'status',
-                    render: function (data) {
-                        var badgeClass = data === 'New' ? 'badge-secondary' :
-                            data === 'Collected' ? 'badge-success' :
-                                data === 'InTransit' ? 'badge-info' :
-                                    data === 'Partial' ? 'badge-warning' : 'badge-secondary';
-                        return '<span class="badge ' + badgeClass + '">' + data + '</span>';
-                    }
-                },
-                {
-                    data: 'homeCollection',
-                    render: function (data) {
-                        return data ? '<i class="fa fa-home text-success"></i>' : '-';
-                    }
-                },
-                { data: 'collectedBy' },
-                { data: 'mobileNo' },
-                {
-                    data: null,
-                    orderable: false,
-                    render: function (data, type, row) {
-                        var buttons = `
-                    <div class="btn-group btn-group-sm" role="group">
-                        <button class="btn btn-primary" onclick="editCollection(${row.billSummaryId})" title="Collect Sample">
-                            <i class="fa fa-flask"></i>
-                        </button>`;
-
-                        if (row.collectionBarcode !== 'New') {
-                            buttons += `
-                        <button class="btn btn-info" onclick="viewCollection(${row.sampleCollectionId})" title="View">
-                            <i class="fa fa-eye"></i>
-                        </button>
-                        <button class="btn btn-success" onclick="printCollectionLabels(${row.sampleCollectionId})" title="Print Labels">
-                            <i class="fa fa-barcode"></i>
-                        </button>`;
-                        }
-
-                        buttons += `
-                        <button class="btn btn-warning" onclick="updateStatus(${row.sampleCollectionId})" title="Update Status">
-                            <i class="fa fa-check"></i>
-                        </button>
-                    </div>`;
-
-                        return buttons;
-                    }
-                }
-            ],
-            pageLength: 25,
-            lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]]
-        });
-    }
-</script>

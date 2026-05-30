@@ -1,4 +1,5 @@
-﻿using eMedLis.DAL.PatientBilling;     // For PatientBillingDB
+using eMedLis.DAL.PatientBilling;     // For PatientBillingDB
+using eMedLis.Models;
 using eMedLis.Models.PatientBilling; // For PatientBillViewModel
 using System;
 using System.Drawing.Imaging;
@@ -70,8 +71,8 @@ namespace eMedLis.Controllers
                     return Content("<h1>Bill not found</h1>", "text/html");
                 }
 
-                // Generate HTML content for direct print
-                string htmlContent = GenerateBillHTML(billData, billId, forModal: false);
+                var lab = new LabMasterDB().Get_Current();
+                string htmlContent = GenerateBillHTML(billData, billId, lab, forModal: false);
 
                 return Content(htmlContent, "text/html");
             }
@@ -82,13 +83,21 @@ namespace eMedLis.Controllers
         }
 
         // Update GenerateBillHTML to support different output formats
-        private string GenerateBillHTML(CompleteBillData billData, int billId, bool forModal = false, bool forPDF = false)
+        private string GenerateBillHTML(CompleteBillData billData, int billId, LabMaster lab, bool forModal = false, bool forPDF = false)
         {
             var html = new StringBuilder();
             string displayBillNo = billData.BillSummary.BillNo ?? billId.ToString();
             string uhid = billData.PatientInfo.UHID ?? "NEW";
             string barcodeBase64 = GenerateBarcode(uhid);
             string bodyOnLoad = (!forModal && !forPDF) ? "onload='window.print();'" : "";
+            string labName = lab != null && !string.IsNullOrWhiteSpace(lab.LabName) ? lab.LabName : "Labsmart Pathology Software";
+            string labAddress = BuildLabAddress(lab);
+            string labPhone = BuildLabPhone(lab);
+            string receiptFooter = lab != null && !string.IsNullOrWhiteSpace(lab.ReceiptFooter) ? lab.ReceiptFooter : "Thank you for choosing our laboratory.";
+            string gstText = (lab != null && lab.ShowGSTInReport && !string.IsNullOrWhiteSpace(lab.GSTNumber)) ? ("GST: " + lab.GSTNumber) : "";
+            string logoHtml = (lab != null && lab.ShowLogoInReport && lab.HasLogo)
+                ? "<img src='/LabMaster/Image?type=Logo' style='max-width:60px;max-height:60px;' />"
+                : "LAB";
 
             html.Append($@"
 <!DOCTYPE html>
@@ -134,11 +143,12 @@ namespace eMedLis.Controllers
     <div class='bill-container'>
         <!-- Header -->
         <div class='header'>
-            <div class='logo'>🔬</div>
+            <div class='logo'>{logoHtml}</div>
             <div class='hospital-info'>
-                <div class='hospital-name'>Labsmart Pathology Software</div>
-                <div class='hospital-address'>Plot No - 4, Ashoka Chowk, Opp Military General Hospital, Pune, 462023</div>
-                <div class='hospital-address'>Phone no. 923456278, 939003261, 924058240</div>
+                <div class='hospital-name'>{labName}</div>
+                <div class='hospital-address'>{labAddress}</div>
+                <div class='hospital-address'>{labPhone}</div>
+                <div class='hospital-address'>{gstText}</div>
             </div>
             <div class='header-right'>
                 <img src='{barcodeBase64}' class='barcode-image' alt='Barcode' /><br/>
@@ -173,15 +183,45 @@ namespace eMedLis.Controllers
             </div>
             <table class='investigations-table'>
                 <tbody>");
-            for (int i = 0; i < billData.BillDetails.Count; i++)
+            int displayIndex = 1;
+            var packageGroups = billData.BillDetails
+                .Where(x => x.IsFromPackage && x.PackageId.HasValue)
+                .GroupBy(x => new { x.PackageId, x.ParentPackageCode, x.ParentPackageName, x.PackagePrice });
+
+            foreach (var grp in packageGroups)
             {
-                var d = billData.BillDetails[i];
+                var packageNameDisplay = string.IsNullOrWhiteSpace(grp.Key.ParentPackageName) ? "Package" : grp.Key.ParentPackageName;
                 html.Append($@"
                     <tr>
-                        <td class='col-sno'>{i + 1}.</td>
+                        <td class='col-sno'>{displayIndex}.</td>
+                        <td class='col-investigations'><strong>{packageNameDisplay}</strong></td>
+                        <td class='col-amount'>Rs. {grp.Key.PackagePrice:F2}</td>
+                    </tr>");
+
+                foreach (var child in grp)
+                {
+                    html.Append($@"
+                    <tr>
+                        <td class='col-sno'></td>
+                        <td class='col-investigations' style='padding-left:24px;'>- {child.InvName}</td>
+                        <td class='col-amount'></td>
+                    </tr>");
+                }
+
+                displayIndex++;
+            }
+
+            var standaloneItems = billData.BillDetails.Where(x => !x.IsFromPackage).ToList();
+            for (int i = 0; i < standaloneItems.Count; i++)
+            {
+                var d = standaloneItems[i];
+                html.Append($@"
+                    <tr>
+                        <td class='col-sno'>{displayIndex}.</td>
                         <td class='col-investigations'>{d.InvName}</td>
                         <td class='col-amount'>Rs. {d.NetAmount:F2}</td>
                     </tr>");
+                displayIndex++;
             }
             html.Append(@"
                 </tbody>
@@ -203,13 +243,13 @@ namespace eMedLis.Controllers
                     html.Append($@"
                 <div style='font-size:10px; margin-bottom:2px; display:flex; justify-content:space-between;'>
                     <span>{p.PaymentMode} - {rcpt}</span>
-                    <span>₹{p.Amount:F2} ({dt})</span>
+                    <span>Rs. {p.Amount:F2} ({dt})</span>
                 </div>");
                 }
                 html.Append($@"
                 <div style='border-top:1px solid #ccc; padding-top:2px; margin-top:4px; font-weight:bold; font-size:10px; display:flex; justify-content:space-between;'>
                     <span>Total Paid:</span>
-                    <span>₹{billData.BillSummary.PaidAmount:F2}</span>
+                    <span>Rs. {billData.BillSummary.PaidAmount:F2}</span>
                 </div>");
             }
             else
@@ -217,7 +257,7 @@ namespace eMedLis.Controllers
                 html.Append($@"
                 <div style='font-size:10px; margin-bottom:2px; display:flex; justify-content:space-between;'>
                     <span>Cash</span>
-                    <span>₹{billData.BillSummary.PaidAmount:F2}</span>
+                    <span>Rs. {billData.BillSummary.PaidAmount:F2}</span>
                 </div>");
             }
             html.Append(@"
@@ -226,17 +266,18 @@ namespace eMedLis.Controllers
             </div>
             <div class='footer-right'>");
             html.Append($@"
-                <div class='total-row'><span class='total-label'>Bill Amount:</span><span>₹{billData.BillSummary.TotalBill:F2}</span></div>
-                <div class='total-row'><span class='total-label'>Discount Amount:</span><span>₹{billData.BillSummary.TotalDiscountAmount:F2}</span></div>
-                <div class='total-row'><span class='total-label'>Final Bill Amount:</span><span>₹{billData.BillSummary.NetAmount:F2}</span></div>
-                <div class='total-row'><span class='total-label'>Paid Amount:</span><span>₹{billData.BillSummary.PaidAmount:F2}</span></div>
-                <div class='total-row'><span class='total-label'>Due Amount:</span><span>₹{billData.BillSummary.DueAmount:F2}</span></div>");
+                <div class='total-row'><span class='total-label'>Bill Amount:</span><span>Rs. {billData.BillSummary.TotalBill:F2}</span></div>
+                <div class='total-row'><span class='total-label'>Discount Amount:</span><span>Rs. {billData.BillSummary.TotalDiscountAmount:F2}</span></div>
+                <div class='total-row'><span class='total-label'>Final Bill Amount:</span><span>Rs. {billData.BillSummary.NetAmount:F2}</span></div>
+                <div class='total-row'><span class='total-label'>Paid Amount:</span><span>Rs. {billData.BillSummary.PaidAmount:F2}</span></div>
+                <div class='total-row'><span class='total-label'>Due Amount:</span><span>Rs. {billData.BillSummary.DueAmount:F2}</span></div>");
             html.Append(@"
             </div>
         </div>
 
         <div class='amount-in-words'>Received with Thanks: Rs. " + ConvertToWords(billData.BillSummary.PaidAmount) + @"</div>
         <div class='signature-line'>Signature of Front Office: _____________________</div>
+        <div style='font-size:10px; text-align:left; margin-top:8px;'>" + receiptFooter + @"</div>
         <div style='font-size:9px; text-align:right; margin-top:8px;'>
             Printed by: Admin | Print Date: " + DateTime.Now.ToString("dd/MM/yyyy HH:mm") + @"
         </div>
@@ -245,6 +286,22 @@ namespace eMedLis.Controllers
 </html>");
 
             return html.ToString();
+        }
+
+        private string BuildLabAddress(LabMaster lab)
+        {
+            if (lab == null) return "Address not configured";
+            var parts = new[] { lab.AddressLine1, lab.AddressLine2, lab.City, lab.State, lab.Pincode, lab.Country };
+            var combined = string.Join(", ", Array.FindAll(parts, x => !string.IsNullOrWhiteSpace(x)));
+            return string.IsNullOrWhiteSpace(combined) ? "Address not configured" : combined;
+        }
+
+        private string BuildLabPhone(LabMaster lab)
+        {
+            if (lab == null) return "";
+            var parts = new[] { lab.MobileNumber, lab.AlternateMobile, lab.Landline };
+            var combined = string.Join(", ", Array.FindAll(parts, x => !string.IsNullOrWhiteSpace(x)));
+            return string.IsNullOrWhiteSpace(combined) ? "" : ("Phone: " + combined);
         }
 
         // Generate barcode using ZXing.Net
@@ -444,7 +501,7 @@ namespace eMedLis.Controllers
                             billNo = billData.BillSummary.BillNo,
                             patientName = billData.PatientInfo.PatName,
                             totalAmount = billData.BillSummary.NetAmount,
-                            BillDate = billData.BillSummary.BillDate.ToString("dd/MM/yyyy")
+                            BillDate = billData.BillSummary.BillDate?.ToString("dd/MM/yyyy")
                         }
                     }, JsonRequestBehavior.AllowGet);
                 }
@@ -472,8 +529,8 @@ namespace eMedLis.Controllers
                     return Json(new { success = false, message = "Bill not found." }, JsonRequestBehavior.AllowGet);
                 }
 
-                // Generate HTML content for modal
-                string htmlContent = GenerateBillHTML(billData, billId, forModal: true);
+                var lab = new LabMasterDB().Get_Current();
+                string htmlContent = GenerateBillHTML(billData, billId, lab, forModal: true);
 
                 return Json(new
                 {
@@ -502,8 +559,8 @@ namespace eMedLis.Controllers
                     return Json(new { success = false, message = "Bill not found." }, JsonRequestBehavior.AllowGet);
                 }
 
-                // Generate PDF-optimized HTML
-                string htmlContent = GenerateBillHTML(billData, billId, forPDF: true);
+                var lab = new LabMasterDB().Get_Current();
+                string htmlContent = GenerateBillHTML(billData, billId, lab, forPDF: true);
 
                 // You can integrate with libraries like iTextSharp, Rotativa, or wkhtmltopdf
                 // For now, returning URL for client-side PDF generation
@@ -538,8 +595,8 @@ namespace eMedLis.Controllers
                     return Json(new { success = false, message = "Bill not found." });
                 }
 
-                // Generate HTML content for email
-                string htmlContent = GenerateBillHTML(billData, billId, forModal: false);
+                var lab = new LabMasterDB().Get_Current();
+                string htmlContent = GenerateBillHTML(billData, billId, lab, forModal: false);
 
                 // TODO: Implement email sending logic
                 // SendEmail(emailTo, emailSubject, emailMessage, htmlContent);
@@ -623,7 +680,7 @@ namespace eMedLis.Controllers
                     billData = new
                     {
                         billNo = billData.BillSummary.BillNo,
-                        BillDate = billData.BillSummary.BillDate.ToString("dd/MM/yyyy HH:mm"),
+                        BillDate = billData.BillSummary.BillDate?.ToString("dd/MM/yyyy HH:mm"),
                         patient = new
                         {
                             name = billData.PatientInfo.PatName,
@@ -666,3 +723,6 @@ namespace eMedLis.Controllers
 
     }
 }
+
+
+
