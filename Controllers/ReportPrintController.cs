@@ -6,6 +6,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web.Mvc;
+using ZXing;
+using ZXing.Common;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
+using System.IO;
 
 namespace eMedLis.Controllers
 {
@@ -113,6 +119,54 @@ namespace eMedLis.Controllers
                 settings = _settingsDb.GetCurrent(),
                 labProfile = _labDb.Get_Current()
             }, JsonRequestBehavior.AllowGet);
+        }
+
+        [HttpGet]
+        // Generates a QR code image for the provided report URL using QRCoder
+        public ActionResult Qr(string d, int size = 82)
+        {
+            if (string.IsNullOrEmpty(d))
+            {
+                return new HttpStatusCodeResult(400);
+            }
+
+            try
+            {
+                // Generate QR code using ZXing.Net
+                var writer = new BarcodeWriterPixelData
+                {
+                    Format = BarcodeFormat.QR_CODE,
+                    Options = new EncodingOptions
+                    {
+                        Height = size,
+                        Width = size,
+                        Margin = 0
+                    }
+                };
+
+                var pixelData = writer.Write(d);
+                using (var bitmap = new Bitmap(pixelData.Width, pixelData.Height, System.Drawing.Imaging.PixelFormat.Format32bppRgb))
+                using (var ms = new MemoryStream())
+                {
+                    var data = bitmap.LockBits(new Rectangle(0, 0, pixelData.Width, pixelData.Height), ImageLockMode.WriteOnly, bitmap.PixelFormat);
+                    try
+                    {
+                        System.Runtime.InteropServices.Marshal.Copy(pixelData.Pixels, 0, data.Scan0, pixelData.Pixels.Length);
+                    }
+                    finally
+                    {
+                        bitmap.UnlockBits(data);
+                    }
+
+                    bitmap.Save(ms, ImageFormat.Png);
+                    return File(ms.ToArray(), "image/png");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(ex.ToString());
+                return Content(ex.ToString(), "text/plain");
+            }
         }
     }
 }

@@ -356,7 +356,8 @@ function renderReportInfoItem(label, value) {
 
 function buildReportQrUrl(doc) {
     var reportUrl = 'https://example.com/report/' + encodeURIComponent(doc.BillNo || doc.SampleDetailId || 'sample');
-    return 'https://chart.googleapis.com/chart?cht=qr&chs=82x82&chl=' + encodeURIComponent(reportUrl);
+    // proxy through server to avoid CORS issues when exporting to PDF
+    return '/ReportPrint/Qr?d=' + encodeURIComponent(reportUrl) + '&size=82';
 }
 
 function renderParametersTable(parameters) {
